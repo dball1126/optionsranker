@@ -1,0 +1,27 @@
+{
+  "name": "optionsranker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Options Ranking and Learning Platform",
+  "workspaces": [
+    "shared",
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:client": "npm run dev -w client",
+    "dev:server": "npm run dev -w server",
+    "build": "npm run build -w shared && npm run build -w client && npm run build -w server",
+    "build:client": "npm run build -w client",
+    "build:server": "npm run build -w server",
+    "start": "npm run start -w server",
+    "db:setup": "npm run db:setup -w server",
+    "db:seed": "npm run db:seed -w server",
+    "lint": "concurrently \"npm run lint -w client\" \"npm run lint -w server\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "typescript": "^5.7.0"
+  }
+}

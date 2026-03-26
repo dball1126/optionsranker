@@ -1,0 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-card: #1e293b;
+  --bg-card-hover: #334155;
+  --border-color: #334155;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent-profit: #10b981;
+  --accent-loss: #f43f5e;
+  --accent-primary: #3b82f6;
+}
+
+@layer base {
+  body {
+    @apply bg-slate-950 text-slate-100 antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  * {
+    @apply border-slate-700/50;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-slate-800 border border-slate-700/50 rounded-xl;
+  }
+
+  .card-hover {
+    @apply hover:bg-slate-700/50 transition-colors duration-200;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #334155 #0f172a;
+}
+
+/* Recharts tooltip override for dark theme */
+.recharts-default-tooltip {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+  border-radius: 0.5rem !important;
+}
+
+.recharts-tooltip-label {
+  color: #f1f5f9 !important;
+}
+
+.recharts-tooltip-item {
+  color: #94a3b8 !important;
+}
