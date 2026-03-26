@@ -6,6 +6,7 @@ import {
   Wrench,
   Briefcase,
   TrendingUp,
+  Activity,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -17,6 +18,7 @@ const navItems = [
   { to: '/strategy-builder', icon: Wrench, label: 'Strategy Builder' },
   { to: '/portfolio', icon: Briefcase, label: 'Portfolio' },
   { to: '/market', icon: TrendingUp, label: 'Market' },
+  { to: '/flow', icon: Activity, label: 'Options Flow' },
 ];
 
 export function Sidebar() {

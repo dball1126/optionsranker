@@ -5,6 +5,7 @@ import { EducationPage } from '@/pages/EducationPage';
 import { StrategyBuilderPage } from '@/pages/StrategyBuilderPage';
 import { PortfolioPage } from '@/pages/PortfolioPage';
 import { MarketPage } from '@/pages/MarketPage';
+import FlowPage from '@/pages/FlowPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { RegisterPage } from '@/pages/RegisterPage';
 
@@ -17,6 +18,7 @@ function App() {
         <Route path="/strategy-builder" element={<StrategyBuilderPage />} />
         <Route path="/portfolio" element={<PortfolioPage />} />
         <Route path="/market" element={<MarketPage />} />
+        <Route path="/flow" element={<FlowPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
       </Routes>
