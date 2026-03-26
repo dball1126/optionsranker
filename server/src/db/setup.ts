@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getDb, closeDb } from './connection.js';
+import { applyMigrations } from './migrate.js';
 import { logger } from '../utils/logger.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -21,6 +22,9 @@ export function setupDatabase(): void {
 
   db.exec(sql);
   logger.info('Database schema applied successfully');
+
+  // Apply migrations using the safer migration script
+  applyMigrations();
 }
 
 // Run directly

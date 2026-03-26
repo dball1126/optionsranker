@@ -15,6 +15,7 @@ interface TradeRow {
   status: string;
   strategy_tag: string | null;
   notes: string | null;
+  paper_trade: number;
   opened_at: string;
   closed_at: string | null;
 }
@@ -77,12 +78,13 @@ export function create(data: {
   entryPrice: number;
   strategyTag?: string;
   notes?: string;
+  paperTrade?: boolean;
 }): TradeRow {
   const db = getDb();
   const result = db.prepare(`
     INSERT INTO trades (portfolio_id, user_id, symbol, option_type, direction, quantity,
-      strike_price, expiration_date, entry_price, strategy_tag, notes)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      strike_price, expiration_date, entry_price, strategy_tag, notes, paper_trade)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     data.portfolioId,
     data.userId,
@@ -94,7 +96,8 @@ export function create(data: {
     data.expirationDate ?? null,
     data.entryPrice,
     data.strategyTag ?? null,
-    data.notes ?? null
+    data.notes ?? null,
+    data.paperTrade ? 1 : 0
   );
 
   return findById(result.lastInsertRowid as number)!;

@@ -4,6 +4,8 @@ export interface Portfolio {
   name: string;
   description: string | null;
   isDefault: boolean;
+  paperMode: boolean;
+  paperBalance: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -11,6 +13,8 @@ export interface Portfolio {
 export interface CreatePortfolioRequest {
   name: string;
   description?: string;
+  paperMode?: boolean;
+  paperBalance?: number;
 }
 
 export interface PortfolioSummary extends Portfolio {

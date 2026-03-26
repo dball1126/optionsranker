@@ -28,8 +28,11 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 // Health check
 app.get('/health', (_req: Request, res: Response) => {
+  console.log('Health endpoint hit!');
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// Let the default 404 handler work
 
 // API routes
 app.use('/api', routes);

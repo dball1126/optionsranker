@@ -7,6 +7,8 @@ import watchlistsRoutes from './watchlists.routes.js';
 import marketRoutes from './market.routes.js';
 import strategiesRoutes from './strategies.routes.js';
 import learningRoutes from './learning.routes.js';
+import signalsRoutes from './signals.js';
+import notificationsRoutes from './notifications.js';
 
 const router = Router();
 
@@ -18,5 +20,7 @@ router.use('/watchlists', watchlistsRoutes);
 router.use('/market', marketRoutes);
 router.use('/strategies', strategiesRoutes);
 router.use('/learning', learningRoutes);
+router.use('/signals', signalsRoutes);
+router.use('/notifications', notificationsRoutes);
 
 export default router;

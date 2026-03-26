@@ -19,6 +19,7 @@ function toTrade(row: any): Trade {
     status: row.status,
     strategyTag: row.strategy_tag,
     notes: row.notes,
+    paperTrade: Boolean(row.paper_trade || false),
     openedAt: row.opened_at,
     closedAt: row.closed_at,
   };
@@ -52,6 +53,7 @@ export function createTrade(userId: number, data: {
   entryPrice: number;
   strategyTag?: string;
   notes?: string;
+  paperTrade?: boolean;
 }): Trade {
   // Verify portfolio belongs to user
   const portfolio = portfolioQueries.findByIdAndUserId(data.portfolioId, userId);

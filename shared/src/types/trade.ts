@@ -17,6 +17,7 @@ export interface Trade {
   status: TradeStatus;
   strategyTag: string | null;
   notes: string | null;
+  paperTrade: boolean;
   openedAt: string;
   closedAt: string | null;
 }
@@ -32,6 +33,7 @@ export interface CreateTradeRequest {
   entryPrice: number;
   strategyTag?: string;
   notes?: string;
+  paperTrade?: boolean;
 }
 
 export interface CloseTradeRequest {

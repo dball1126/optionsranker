@@ -6,6 +6,7 @@ export type { Trade, CreateTradeRequest, CloseTradeRequest, OptionType, TradeDir
 export type { StrategyType, StrategyLeg, StrategyDefinition, StrategyAnalysisRequest, StrategyAnalysisResponse } from './types/strategy.js';
 export type { Watchlist, WatchlistItem, WatchlistWithItems, CreateWatchlistRequest, AddWatchlistItemRequest } from './types/watchlist.js';
 export type { LearningModule, LearningProgress, UserLearningOverview, ModuleContent, ContentSection, QuizQuestion, LearningCategory, Difficulty, ProgressStatus } from './types/learning.js';
+export type { Signal, SignalPerformance, CreateSignalRequest, ResolveSignalRequest, NotificationPreferences, UserNotification, CreateNotificationRequest } from './types/signal.js';
 export type { ApiResponse, ApiError, PaginatedResponse } from './types/api.js';
 
 // Validation schemas

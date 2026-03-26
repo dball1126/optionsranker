@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 interface CardProps {
   children: ReactNode;
   className?: string;
+  onClick?: () => void;
 }
 
 interface CardHeaderProps {
@@ -21,13 +22,15 @@ interface CardFooterProps {
   className?: string;
 }
 
-export function Card({ children, className }: CardProps) {
+export function Card({ children, className, onClick }: CardProps) {
   return (
     <div
       className={cn(
         'bg-slate-800 border border-slate-700/50 rounded-xl overflow-hidden',
+        onClick && 'cursor-pointer hover:bg-slate-700/50 transition-colors',
         className,
       )}
+      onClick={onClick}
     >
       {children}
     </div>

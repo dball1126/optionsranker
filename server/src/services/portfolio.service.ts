@@ -10,6 +10,8 @@ function toPortfolio(row: any): Portfolio {
     name: row.name,
     description: row.description,
     isDefault: Boolean(row.is_default),
+    paperMode: Boolean(row.paper_mode),
+    paperBalance: row.paper_balance || 0,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -59,7 +61,7 @@ export function getPortfolioSummary(id: number, userId: number): PortfolioSummar
   };
 }
 
-export function createPortfolio(userId: number, data: { name: string; description?: string }): Portfolio {
+export function createPortfolio(userId: number, data: { name: string; description?: string; paperMode?: boolean; paperBalance?: number }): Portfolio {
   const count = portfolioQueries.countByUserId(userId);
   if (count >= 10) {
     throw badRequest('Maximum of 10 portfolios allowed');
@@ -70,6 +72,8 @@ export function createPortfolio(userId: number, data: { name: string; descriptio
     name: data.name,
     description: data.description,
     isDefault: count === 0,
+    paperMode: data.paperMode || false,
+    paperBalance: data.paperBalance || 100000,
   });
 
   return toPortfolio(row);

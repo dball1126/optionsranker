@@ -6,6 +6,8 @@ interface PortfolioRow {
   name: string;
   description: string | null;
   is_default: number;
+  paper_mode: number;
+  paper_balance: number;
   created_at: string;
   updated_at: string;
 }
@@ -30,12 +32,21 @@ export function create(data: {
   name: string;
   description?: string;
   isDefault?: boolean;
+  paperMode?: boolean;
+  paperBalance?: number;
 }): PortfolioRow {
   const db = getDb();
   const result = db.prepare(`
-    INSERT INTO portfolios (user_id, name, description, is_default)
-    VALUES (?, ?, ?, ?)
-  `).run(data.userId, data.name, data.description ?? null, data.isDefault ? 1 : 0);
+    INSERT INTO portfolios (user_id, name, description, is_default, paper_mode, paper_balance)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(
+    data.userId, 
+    data.name, 
+    data.description ?? null, 
+    data.isDefault ? 1 : 0,
+    data.paperMode ? 1 : 0,
+    data.paperBalance ?? 100000
+  );
 
   return findById(result.lastInsertRowid as number)!;
 }
