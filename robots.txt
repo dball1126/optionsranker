@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://optionsranker.com/sitemap.xml
+
+# Block admin areas (if any)
+Disallow: /admin/
+Disallow: /private/
+
+# Allow crawling of important pages
+Allow: /signals
+Allow: /analysis
+Allow: /pricing
+Allow: /features
