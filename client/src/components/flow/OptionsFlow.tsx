@@ -61,21 +61,23 @@ export function OptionsFlow({ flows }: OptionsFlowProps) {
         <div className="flex gap-2">
           <Select
             value={filter}
-            onValueChange={(value: any) => setFilter(value)}
-          >
-            <option value="ALL">All</option>
-            <option value="CALLS">Calls</option>
-            <option value="PUTS">Puts</option>
-            <option value="SWEEPS">Sweeps</option>
-          </Select>
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilter(e.target.value as any)}
+            options={[
+              { value: 'ALL', label: 'All' },
+              { value: 'CALLS', label: 'Calls' },
+              { value: 'PUTS', label: 'Puts' },
+              { value: 'SWEEPS', label: 'Sweeps' },
+            ]}
+          />
           <Select
             value={sortBy}
-            onValueChange={(value: any) => setSortBy(value)}
-          >
-            <option value="time">Time</option>
-            <option value="premium">Premium</option>
-            <option value="volume">Volume</option>
-          </Select>
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSortBy(e.target.value as any)}
+            options={[
+              { value: 'time', label: 'Time' },
+              { value: 'premium', label: 'Premium' },
+              { value: 'volume', label: 'Volume' },
+            ]}
+          />
         </div>
       </div>
 

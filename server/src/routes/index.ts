@@ -9,6 +9,7 @@ import strategiesRoutes from './strategies.routes.js';
 import learningRoutes from './learning.routes.js';
 import signalsRoutes from './signals.js';
 import notificationsRoutes from './notifications.js';
+import paymentsRoutes from './payments.routes.js';
 
 const router = Router();
 
@@ -22,5 +23,16 @@ router.use('/strategies', strategiesRoutes);
 router.use('/learning', learningRoutes);
 router.use('/signals', signalsRoutes);
 router.use('/notifications', notificationsRoutes);
+router.use('/payments', paymentsRoutes);
+
+// Health check endpoint
+router.get('/health', (req, res) => {
+  res.json({ 
+    status: 'healthy', 
+    timestamp: new Date().toISOString(),
+    version: '1.0.0',
+    environment: process.env.NODE_ENV 
+  });
+});
 
 export default router;

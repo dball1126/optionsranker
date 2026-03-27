@@ -113,7 +113,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     try {
       const response = await notificationsApi.updatePreferences(newPreferences);
       set({ 
-        preferences: response.data.data,
+        preferences: response.data,
         isLoading: false 
       });
     } catch (err) {

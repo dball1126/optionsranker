@@ -22,6 +22,7 @@ import { SignalPerformanceDashboard } from '@/components/signals/SignalPerforman
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import { MobileSignalCard } from '@/components/mobile/MobileSignalCard';
 import { useAuthStore } from '@/stores/authStore';
+import { useSubscriptionStore } from '@/stores/subscriptionStore';
 
 type DashboardTab = 'overview' | 'paper-trading' | 'signals' | 'notifications';
 
@@ -74,14 +75,38 @@ const mockHighConfidenceSignals = [
 export function ProDashboardPage() {
   const navigate = useNavigate();
   const user = useAuthStore(s => s.user);
+  const subscription = useSubscriptionStore(s => s.subscription);
+  const pricing = useSubscriptionStore(s => s.pricing);
+  const subscriptionLoading = useSubscriptionStore(s => s.loading);
+  const subscriptionError = useSubscriptionStore(s => s.error);
+  const loadSubscription = useSubscriptionStore(s => s.loadSubscription);
+  const loadPricing = useSubscriptionStore(s => s.loadPricing);
+  const createCheckoutSession = useSubscriptionStore(s => s.createCheckoutSession);
+  const manageBilling = useSubscriptionStore(s => s.manageBilling);
+  const isPro = useSubscriptionStore(s => s.isPro);
+  const isTrialing = useSubscriptionStore(s => s.isTrialing);
+  
   const [activeTab, setActiveTab] = useState<DashboardTab>('overview');
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
-  const isPro = user?.tier === 'pro';
+  // Load subscription and pricing data on mount
+  useEffect(() => {
+    if (user) {
+      loadSubscription();
+      loadPricing();
+    }
+  }, [user, loadSubscription, loadPricing]);
 
   const handleUpgrade = () => {
-    // In a real app, this would integrate with Stripe or payment processor
-    setShowUpgradeModal(true);
+    if (pricing) {
+      createCheckoutSession();
+    } else {
+      setShowUpgradeModal(true);
+    }
+  };
+
+  const handleManageBilling = () => {
+    manageBilling();
   };
 
   const handleTrade = (signal: any) => {
@@ -126,19 +151,39 @@ export function ProDashboardPage() {
                   Welcome back{user ? `, ${user.displayName || user.username}` : ''}!
                 </h1>
                 <p className="text-muted-foreground">
-                  Your options trading command center • {isPro ? 'Pro Member' : 'Free Account'}
+                  Your options trading command center • {isPro() ? (isTrialing() ? 'Pro Trial' : 'Pro Member') : 'Free Account'}
                 </p>
+                {subscriptionError && (
+                  <p className="text-sm text-red-600 mt-1">{subscriptionError}</p>
+                )}
               </div>
               <div className="flex items-center space-x-3">
-                <Badge 
-                  variant={isPro ? "success" : "secondary"}
-                  className={isPro ? "bg-green-100 text-green-800" : ""}
-                >
-                  {isPro ? '⭐ PRO' : '🆓 FREE'}
-                </Badge>
-                {!isPro && (
-                  <Button onClick={handleUpgrade} className="bg-blue-600 hover:bg-blue-700">
-                    Upgrade to Pro
+                {subscriptionLoading ? (
+                  <Badge variant="secondary">Loading...</Badge>
+                ) : (
+                  <Badge 
+                    variant={isPro() ? "success" : "secondary"}
+                    className={isPro() ? "bg-green-100 text-green-800" : ""}
+                  >
+                    {isPro() ? (isTrialing() ? '🎯 TRIAL' : '⭐ PRO') : '🆓 FREE'}
+                  </Badge>
+                )}
+                {!isPro() && (
+                  <Button 
+                    onClick={handleUpgrade} 
+                    disabled={subscriptionLoading}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {subscriptionLoading ? 'Loading...' : 'Upgrade to Pro'}
+                  </Button>
+                )}
+                {isPro() && (
+                  <Button 
+                    onClick={handleManageBilling} 
+                    variant="outline"
+                    disabled={subscriptionLoading}
+                  >
+                    Manage Billing
                   </Button>
                 )}
               </div>
@@ -286,7 +331,7 @@ export function ProDashboardPage() {
                               onClick={() => handleTrade(signal)}
                               className="bg-blue-600 hover:bg-blue-700"
                             >
-                              {isPro ? 'Trade' : 'Paper Trade'}
+                              {isPro() ? 'Trade' : 'Paper Trade'}
                             </Button>
                           </td>
                         </tr>
@@ -298,7 +343,7 @@ export function ProDashboardPage() {
             </div>
 
             {/* Feature Highlights for Free Users */}
-            {!isPro && (
+            {!isPro() && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card className="p-6 bg-gradient-to-br from-blue-50 to-purple-50 border-blue-200">
                   <div className="flex items-start space-x-4">
@@ -420,7 +465,7 @@ export function ProDashboardPage() {
               <div className="space-y-2 mb-6">
                 <div className="flex items-center justify-between text-sm">
                   <span>Monthly Plan</span>
-                  <span className="font-bold">$29/month</span>
+                  <span className="font-bold">${pricing?.pro.price || 29}/month</span>
                 </div>
                 <div className="flex items-center justify-between text-sm text-muted-foreground">
                   <span>7-day free trial</span>
@@ -438,12 +483,12 @@ export function ProDashboardPage() {
                 <Button
                   onClick={() => {
                     setShowUpgradeModal(false);
-                    // Implement payment flow
-                    console.log('Starting upgrade flow...');
+                    handleUpgrade();
                   }}
+                  disabled={subscriptionLoading}
                   className="flex-1 bg-blue-600 hover:bg-blue-700"
                 >
-                  Start Free Trial
+                  {subscriptionLoading ? 'Loading...' : 'Start Free Trial'}
                 </Button>
               </div>
             </div>

@@ -5,10 +5,10 @@ import type { ApiResponse, Quote, OptionsChain } from '@optionsranker/shared';
 
 const router = Router();
 
-router.get('/quote/:symbol', (req, res, next) => {
+router.get('/quote/:symbol', async (req, res, next) => {
   try {
     const symbol = String(req.params.symbol);
-    const quote = marketService.getQuote(symbol);
+    const quote = await marketService.getQuote(symbol);
     if (!quote) throw notFound(`Quote not found for symbol: ${symbol}`);
 
     const response: ApiResponse<Quote> = {
@@ -21,10 +21,10 @@ router.get('/quote/:symbol', (req, res, next) => {
   }
 });
 
-router.get('/chain/:symbol', (req, res, next) => {
+router.get('/chain/:symbol', async (req, res, next) => {
   try {
     const symbol = String(req.params.symbol);
-    const chain = marketService.getOptionsChain(symbol);
+    const chain = await marketService.getOptionsChain(symbol);
     if (!chain) throw notFound(`Options chain not found for symbol: ${symbol}`);
 
     const response: ApiResponse<OptionsChain> = {
@@ -37,10 +37,10 @@ router.get('/chain/:symbol', (req, res, next) => {
   }
 });
 
-router.get('/search', (req, res, next) => {
+router.get('/search', async (req, res, next) => {
   try {
     const query = (req.query.q as string) || '';
-    const results = marketService.searchSymbols(query);
+    const results = await marketService.searchSymbols(query);
 
     const response: ApiResponse<Quote[]> = {
       success: true,

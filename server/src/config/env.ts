@@ -14,4 +14,13 @@ export const config = {
   JWT_REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
   DATABASE_PATH: path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..', process.env.DATABASE_PATH || 'data/optionsranker.db'),
   CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:5173',
+  
+  // Stripe Configuration
+  STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+  STRIPE_PUBLISHABLE_KEY: process.env.STRIPE_PUBLISHABLE_KEY,
+  STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
+  STRIPE_PRICE_ID_PRO_MONTHLY: process.env.STRIPE_PRICE_ID_PRO_MONTHLY,
 } as const;
+
+// Backwards compatibility export
+export const env = config;

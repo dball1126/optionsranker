@@ -1,5 +1,7 @@
 import type { Quote, OptionsChain, OptionsContract, Greeks } from '@optionsranker/shared';
 import { calculateGreeks } from '../utils/blackScholes.js';
+import { realMarketDataService } from './realMarketData.service.js';
+import { config } from '../config/env.js';
 
 // Hardcoded stock data for the mock service
 const STOCK_DATA: Record<string, { name: string; basePrice: number; marketCap?: number }> = {
@@ -56,7 +58,21 @@ function getSessionPrice(symbol: string, basePrice: number): number {
   return Math.round((basePrice * (1 + change)) * 100) / 100;
 }
 
-export function getQuote(symbol: string): Quote | null {
+export async function getQuote(symbol: string): Promise<Quote | null> {
+  // In production, use real market data
+  if (config.NODE_ENV === 'production' || process.env.USE_REAL_DATA === 'true') {
+    try {
+      const realQuote = await realMarketDataService.getQuote(symbol);
+      if (realQuote) return realQuote;
+      
+      // Fallback to mock data if real data fails
+      console.warn(`Real data failed for ${symbol}, falling back to mock data`);
+    } catch (error) {
+      console.error(`Error fetching real data for ${symbol}:`, error);
+    }
+  }
+
+  // Mock data fallback
   const upperSymbol = symbol.toUpperCase();
   const stock = STOCK_DATA[upperSymbol];
 
@@ -86,8 +102,22 @@ export function getQuote(symbol: string): Quote | null {
   };
 }
 
-export function getOptionsChain(symbol: string): OptionsChain | null {
-  const quote = getQuote(symbol);
+export async function getOptionsChain(symbol: string): Promise<OptionsChain | null> {
+  // In production, use real market data
+  if (config.NODE_ENV === 'production' || process.env.USE_REAL_DATA === 'true') {
+    try {
+      const realChain = await realMarketDataService.getOptionsChain(symbol);
+      if (realChain) return realChain;
+      
+      // Fallback to mock data if real data fails
+      console.warn(`Real options data failed for ${symbol}, falling back to mock data`);
+    } catch (error) {
+      console.error(`Error fetching real options data for ${symbol}:`, error);
+    }
+  }
+
+  // Mock data fallback
+  const quote = await getQuote(symbol);
   if (!quote) return null;
 
   const S = quote.price;
@@ -208,7 +238,21 @@ function round4(n: number): number {
   return Math.round(n * 10000) / 10000;
 }
 
-export function searchSymbols(query: string): Quote[] {
+export async function searchSymbols(query: string): Promise<Quote[]> {
+  // In production, use real market data search
+  if (config.NODE_ENV === 'production' || process.env.USE_REAL_DATA === 'true') {
+    try {
+      const realResults = await realMarketDataService.searchSymbols(query);
+      if (realResults.length > 0) return realResults;
+      
+      // Fallback to mock data if real search fails
+      console.warn(`Real search failed for "${query}", falling back to mock data`);
+    } catch (error) {
+      console.error(`Error searching real data for "${query}":`, error);
+    }
+  }
+
+  // Mock data fallback
   const q = query.toUpperCase().trim();
   if (!q) return [];
 
@@ -218,7 +262,9 @@ export function searchSymbols(query: string): Quote[] {
     )
     .slice(0, 10);
 
-  return matches
-    .map(([symbol]) => getQuote(symbol))
-    .filter((q): q is Quote => q !== null);
+  const results = await Promise.all(
+    matches.map(([symbol]) => getQuote(symbol))
+  );
+
+  return results.filter((q): q is Quote => q !== null);
 }

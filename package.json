@@ -18,10 +18,24 @@
     "start": "npm run start -w server",
     "db:setup": "npm run db:setup -w server",
     "db:seed": "npm run db:seed -w server",
-    "lint": "concurrently \"npm run lint -w client\" \"npm run lint -w server\""
+    "lint": "concurrently \"npm run lint -w client\" \"npm run lint -w server\"",
+    "test:performance": "node scripts/performance-test.js",
+    "test:production": "TEST_URL=https://optionsranker.vercel.app node scripts/performance-test.js",
+    "deploy": "./deploy.sh",
+    "docker:build": "docker build -t optionsranker .",
+    "docker:run": "docker-compose up -d",
+    "docker:stop": "docker-compose down"
   },
   "devDependencies": {
     "concurrently": "^9.1.0",
     "typescript": "^5.7.0"
+  },
+  "dependencies": {
+    "@stripe/stripe-js": "^9.0.0",
+    "@types/compression": "^1.8.1",
+    "compression": "^1.8.1",
+    "express-rate-limit": "^8.3.1",
+    "helmet": "^8.1.0",
+    "stripe": "^21.0.1"
   }
 }
