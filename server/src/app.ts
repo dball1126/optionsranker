@@ -64,30 +64,24 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-// Health check
-app.get('/health', (_req: Request, res: Response) => {
-  console.log('Health endpoint hit!');
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
-// Let the default 404 handler work
-
 // API routes
+console.log('🔧 Setting up API routes...');
 app.use('/api', routes);
+console.log('✅ API routes setup complete');
 
 // Serve static files in production
 if (config.NODE_ENV === 'production') {
   const clientPath = path.resolve(__dirname, '../../client/dist');
   app.use(express.static(clientPath));
   
-  // Handle client-side routing
-  app.get('*', (req, res) => {
+  // Handle client-side routing (only for non-API routes)
+  app.get('(.*)', (req, res) => {
+    if (req.path.startsWith('/api/')) {
+      return notFoundHandler(req, res);
+    }
     res.sendFile(path.resolve(clientPath, 'index.html'));
   });
 }
-
-// Handle 404 for API routes
-app.all('*', notFoundHandler);
 
 // Global error handler (must be last)
 app.use(config.NODE_ENV === 'production' ? productionErrorHandler : errorHandler);
