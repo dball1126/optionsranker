@@ -1,0 +1,2331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OptionsRanker — Find the Best Options Play for Any Stock</title>
+<meta name="description" content="14 options strategies scored and ranked instantly. IV-optimized scoring, probability of profit, payoff diagrams, and real-time chain data.">
+<meta property="og:title" content="OptionsRanker — Best Options Strategy Finder">
+<meta property="og:description" content="Enter any ticker. Get 14 strategies scored and ranked. Probability of profit, risk/reward, payoff diagrams.">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+:root {
+  --bg: #0a0a0f;
+  --bg2: #12121a;
+  --bg3: #1a1a25;
+  --bg4: #22222f;
+  --border: #2a2a3a;
+  --text: #e8e8ef;
+  --dim: #888899;
+  --dimmer: #555566;
+  --accent: #00d4aa;
+  --accent2: #00b894;
+  --green: #4caf50;
+  --red: #f44336;
+  --orange: #FF9800;
+  --blue: #2196F3;
+  --yellow: #FFD600;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ===== HEADER ===== */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  height: 56px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg2);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+.logo {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: var(--accent);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.logo span { color: var(--dim); font-weight: 400; font-size: 12px; }
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.header-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.header-btn:hover { border-color: var(--accent); color: var(--accent); }
+.header-btn.primary {
+  background: var(--accent);
+  color: #000;
+  border-color: var(--accent);
+}
+.header-btn.primary:hover { background: var(--accent2); }
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.user-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.user-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+.user-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 3px;
+  background: var(--accent);
+  color: #000;
+  text-transform: uppercase;
+}
+
+/* ===== LANDING PAGE ===== */
+.landing {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 80px 24px 60px;
+  text-align: center;
+}
+.landing h1 {
+  font-size: 42px;
+  font-weight: 900;
+  letter-spacing: -1.5px;
+  line-height: 1.1;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, #fff 0%, var(--accent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.landing .subtitle {
+  font-size: 18px;
+  color: var(--dim);
+  margin-bottom: 40px;
+  font-weight: 400;
+}
+.search-container {
+  max-width: 500px;
+  margin: 0 auto 48px;
+  position: relative;
+}
+.search-box {
+  width: 100%;
+  padding: 16px 20px 16px 48px;
+  background: var(--bg3);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  font-size: 16px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.search-box:focus { border-color: var(--accent); }
+.search-box::placeholder { color: var(--dimmer); }
+.search-icon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 20px;
+  color: var(--dimmer);
+}
+.features {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  max-width: 440px;
+  margin: 0 auto 48px;
+  text-align: left;
+}
+.feature {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--dim);
+}
+.feature .check { color: var(--accent); font-weight: 700; }
+
+.how-it-works {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 32px;
+  margin-bottom: 40px;
+  text-align: left;
+}
+.how-it-works h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 20px;
+  text-align: center;
+}
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.step {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.step-num {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  background: var(--accent);
+  color: #000;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 13px;
+}
+.step-text { font-size: 14px; color: var(--dim); line-height: 1.5; }
+.step-text strong { color: var(--text); }
+
+.cta-row {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.cta-btn {
+  padding: 14px 32px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+.cta-btn.secondary {
+  background: var(--bg3);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.cta-btn.secondary:hover { border-color: var(--accent); }
+.cta-btn.primary {
+  background: var(--accent);
+  color: #000;
+}
+.cta-btn.primary:hover { background: var(--accent2); transform: translateY(-1px); }
+
+/* ===== MARKET PULSE ===== */
+.market-pulse {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px 32px;
+  margin-bottom: 40px;
+  text-align: left;
+}
+.market-pulse h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+  text-align: center;
+}
+.market-pulse .mp-sub {
+  font-size: 12px;
+  color: var(--dimmer);
+  text-align: center;
+  margin-bottom: 20px;
+}
+.mp-signals {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.mp-signal {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--bg3);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  transition: border-color 0.2s;
+}
+.mp-signal.bullish { border-color: #4caf5040; }
+.mp-signal.bearish { border-color: #f4433640; }
+.mp-signal.neutral { border-color: #FF980040; }
+.mp-icon {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+.mp-signal.bullish .mp-icon { background: #4caf5018; }
+.mp-signal.bearish .mp-icon { background: #f4433618; }
+.mp-signal.neutral .mp-icon { background: #FF980018; }
+.mp-body { flex: 1; }
+.mp-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+.mp-detail {
+  font-size: 11px;
+  color: var(--dim);
+  line-height: 1.5;
+}
+.mp-value {
+  font-weight: 700;
+  color: var(--text);
+}
+.mp-tag {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.mp-tag.green { background: #4caf5020; color: var(--green); }
+.mp-tag.red { background: #f4433620; color: var(--red); }
+.mp-tag.yellow { background: #FF980020; color: var(--orange); }
+.mp-summary {
+  background: var(--bg4);
+  border-radius: 10px;
+  padding: 14px 16px;
+  text-align: center;
+}
+.mp-summary-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+.mp-summary-text {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.6;
+}
+.mp-loading {
+  text-align: center;
+  padding: 20px;
+  color: var(--dimmer);
+  font-size: 12px;
+}
+.mp-score-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.mp-score-label {
+  font-size: 11px;
+  color: var(--dim);
+  font-weight: 600;
+}
+.mp-score-bar {
+  width: 120px;
+  height: 8px;
+  background: var(--bg4);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.mp-score-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.6s ease;
+}
+.mp-score-val {
+  font-size: 14px;
+  font-weight: 800;
+  min-width: 28px;
+}
+@media (max-width: 480px) {
+  .market-pulse { padding: 20px 16px; }
+}
+
+/* ===== RESULTS LAYOUT ===== */
+.results {
+  display: none;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px 60px;
+}
+.results.active { display: block; }
+.results-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.results-ticker {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.results-ticker h2 {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+.results-price {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--dim);
+}
+.results-search {
+  width: 240px;
+  padding: 8px 12px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+}
+.results-search:focus { border-color: var(--accent); }
+
+.results-grid {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+/* ===== LEFT PANEL — STRATEGIES ===== */
+.strat-panel { display: flex; flex-direction: column; gap: 10px; }
+
+/* IV Rank Banner */
+.iv-banner {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 18px;
+}
+.iv-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.iv-label {
+  font-size: 10px;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.iv-value { font-size: 20px; font-weight: 800; }
+.iv-bar {
+  height: 6px;
+  background: var(--bg4);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+.iv-fill { height: 100%; border-radius: 3px; transition: width 0.4s; }
+.iv-hint { font-size: 11px; color: var(--dimmer); }
+
+/* Controls */
+.strat-controls {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.strat-controls select {
+  background: var(--bg3);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* Strategy Cards */
+.strat-cards { display: flex; flex-direction: column; gap: 8px; }
+
+.strat-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+.strat-card:hover { border-color: var(--accent); background: var(--bg3); }
+.strat-card.locked { cursor: pointer; }
+.strat-card.locked:hover { border-color: var(--border); background: var(--bg2); }
+
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.card-rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--bg4);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--dim);
+  margin-right: 8px;
+}
+.card-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  flex: 1;
+}
+.card-exp {
+  font-size: 9px;
+  color: var(--dimmer);
+  font-weight: 400;
+  margin-left: 6px;
+}
+.card-score {
+  font-size: 18px;
+  font-weight: 800;
+  min-width: 36px;
+  text-align: right;
+}
+.opt-badge {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  margin-left: 6px;
+}
+.opt-badge.bullish { background: #4caf5020; color: var(--green); }
+.opt-badge.bearish { background: #f4433620; color: var(--red); }
+.opt-badge.neutral { background: #FF980020; color: var(--orange); }
+.opt-badge.volatility { background: #2196F320; color: var(--blue); }
+
+.card-legs {
+  font-size: 11px;
+  color: var(--dimmer);
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+.card-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+.card-metric { text-align: center; }
+.card-metric-label { font-size: 8px; color: var(--dim); text-transform: uppercase; }
+.card-metric-val { font-size: 13px; font-weight: 700; }
+.card-greeks {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #ffffff08;
+}
+.card-greek { font-size: 9px; color: var(--dim); }
+.card-greek span { color: var(--text); font-weight: 600; }
+
+/* Locked card overlay */
+.lock-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+.lock-blur {
+  position: absolute;
+  inset: 40px 0 0;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  background: rgba(10,10,15,0.4);
+}
+.lock-cta {
+  position: relative;
+  z-index: 3;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-top: 30px;
+}
+
+/* ===== RIGHT PANEL — IV + CHAIN ===== */
+.side-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: sticky;
+  top: 72px;
+  max-height: calc(100vh - 88px);
+  overflow-y: auto;
+}
+.side-section {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.side-title {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 12px 14px 8px;
+}
+
+/* Chain table */
+.chain-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 14px 8px;
+  overflow-x: auto;
+}
+.chain-tab {
+  font-size: 10px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: var(--bg3);
+  color: var(--dim);
+  cursor: pointer;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+.chain-tab.active { color: var(--accent); border-color: var(--accent); }
+.chain-table-wrap { max-height: 400px; overflow-y: auto; }
+.chain-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+}
+.chain-table th {
+  color: var(--dim);
+  font-size: 8px;
+  text-transform: uppercase;
+  padding: 4px 3px;
+  text-align: right;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--bg2);
+}
+.chain-table th.strike-col { text-align: center; }
+.chain-table td { padding: 3px; text-align: right; color: var(--text); }
+.chain-table td.strike-col { text-align: center; font-weight: 700; color: var(--accent); background: var(--bg3); }
+.chain-table tr.itm-call td:not(.strike-col):nth-child(-n+5) { background: #4caf5008; }
+.chain-table tr.itm-put td:not(.strike-col):nth-child(n+6) { background: #f4433608; }
+.chain-table tr:hover td { background: var(--bg4); }
+
+/* Saved strategies section */
+.saved-section { margin-bottom: 4px; }
+.saved-title {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 0 0 8px;
+}
+
+/* ===== DETAIL MODAL ===== */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 10000;
+  justify-content: center;
+  align-items: center;
+}
+.modal-overlay.active { display: flex; }
+.modal {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  width: 92%;
+  max-width: 620px;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--border);
+}
+.modal-header h3 { font-size: 16px; color: var(--text); }
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--dim);
+  font-size: 22px;
+  cursor: pointer;
+}
+.modal-close:hover { color: var(--text); }
+.modal-body { padding: 18px 22px; }
+.modal-section { margin-bottom: 18px; }
+.modal-section h4 {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 10px;
+}
+.payoff-canvas {
+  width: 100%;
+  height: 200px;
+  background: var(--bg3);
+  border-radius: 10px;
+}
+.legs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+.legs-table th {
+  text-align: left;
+  color: var(--dim);
+  font-size: 9px;
+  text-transform: uppercase;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--border);
+}
+.legs-table td {
+  padding: 5px 6px;
+  color: var(--text);
+  border-bottom: 1px solid #ffffff08;
+}
+.legs-table .buy { color: var(--green); }
+.legs-table .sell { color: var(--red); }
+.modal-greeks {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.modal-greek {
+  background: var(--bg4);
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+}
+.modal-greek .label { font-size: 9px; color: var(--dim); text-transform: uppercase; }
+.modal-greek .value { font-size: 14px; font-weight: 700; color: var(--text); margin-top: 2px; }
+.breakevens { display: flex; gap: 8px; flex-wrap: wrap; }
+.breakeven-tag {
+  background: var(--bg4);
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--accent);
+}
+.explanation { font-size: 12px; color: var(--dim); line-height: 1.6; }
+
+/* ===== UPGRADE MODAL ===== */
+.upgrade-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 10001;
+  justify-content: center;
+  align-items: center;
+}
+.upgrade-overlay.active { display: flex; }
+.upgrade-modal {
+  background: var(--bg2);
+  border: 1px solid var(--accent);
+  border-radius: 16px;
+  padding: 36px 32px;
+  max-width: 440px;
+  width: 92%;
+  text-align: center;
+}
+.upgrade-modal h2 {
+  font-size: 22px;
+  font-weight: 800;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+.upgrade-modal .price {
+  font-size: 36px;
+  font-weight: 900;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+.upgrade-modal .price-sub {
+  font-size: 13px;
+  color: var(--dim);
+  margin-bottom: 24px;
+}
+.upgrade-features {
+  text-align: left;
+  margin-bottom: 28px;
+}
+.upgrade-feature {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 13px;
+  color: var(--text);
+}
+.upgrade-feature .uf-check { color: var(--accent); font-weight: 700; font-size: 16px; }
+.upgrade-cta {
+  width: 100%;
+  padding: 14px;
+  background: var(--accent);
+  color: #000;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  margin-bottom: 10px;
+  transition: background 0.2s;
+}
+.upgrade-cta:hover { background: var(--accent2); }
+.upgrade-dismiss {
+  background: none;
+  border: none;
+  color: var(--dimmer);
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* ===== SIGN-IN MODAL ===== */
+.signin-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 10002;
+  justify-content: center;
+  align-items: center;
+}
+.signin-overlay.active { display: flex; }
+.signin-modal {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 36px 32px;
+  max-width: 400px;
+  width: 92%;
+  text-align: center;
+}
+.signin-modal h2 {
+  font-size: 20px;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+.signin-modal .signin-sub {
+  font-size: 13px;
+  color: var(--dim);
+  margin-bottom: 24px;
+}
+#google-signin-container {
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: center;
+}
+.guest-btn {
+  background: var(--bg3);
+  color: var(--dim);
+  border: 1px solid var(--border);
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+  width: 100%;
+}
+.guest-btn:hover { border-color: var(--accent); color: var(--text); }
+.signin-close {
+  background: none;
+  border: none;
+  color: var(--dimmer);
+  font-size: 12px;
+  cursor: pointer;
+  margin-top: 12px;
+  font-family: inherit;
+}
+
+/* ===== LOADING ===== */
+.loading-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--dimmer);
+  font-size: 14px;
+}
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--bg4);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 16px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 860px) {
+  .results-grid {
+    grid-template-columns: 1fr;
+  }
+  .side-panel {
+    position: static;
+    max-height: none;
+  }
+  .landing h1 { font-size: 30px; }
+  .landing .subtitle { font-size: 15px; }
+  .features { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) {
+  .header { padding: 0 12px; }
+  .landing { padding: 40px 16px 40px; }
+  .landing h1 { font-size: 26px; }
+  .search-box { font-size: 14px; padding: 14px 16px 14px 40px; }
+  .results { padding: 0 8px 40px; }
+  .modal { width: 98%; }
+  .upgrade-modal, .signin-modal { padding: 24px 20px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="logo" onclick="showLanding()">OptionsRanker</div>
+  <div class="header-right" id="auth-area">
+    <button class="header-btn" onclick="openSignIn()">Sign In</button>
+    <button class="header-btn primary" onclick="showUpgradeModal()">Subscribe $10/mo</button>
+  </div>
+</div>
+
+<!-- Landing Page -->
+<div class="landing" id="landing">
+  <h1>Find the Best Options Play for Any Stock</h1>
+  <p class="subtitle">14 strategies scored and ranked instantly</p>
+  <div class="search-container">
+    <span class="search-icon">&#128269;</span>
+    <input type="text" class="search-box" id="search-landing" placeholder="Search any ticker... (e.g. AAPL)" autocomplete="off">
+  </div>
+  <div class="features">
+    <div class="feature"><span class="check">&#10003;</span> Probability of profit</div>
+    <div class="feature"><span class="check">&#10003;</span> Risk/reward ratio</div>
+    <div class="feature"><span class="check">&#10003;</span> IV-optimized scoring</div>
+    <div class="feature"><span class="check">&#10003;</span> Payoff diagrams</div>
+  </div>
+  <div class="how-it-works">
+    <h3>How it works</h3>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div class="step-text"><strong>Enter a ticker</strong> — any stock with options</div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-text"><strong>We analyze every viable strategy</strong> — 14 types, real-time chain data, Black-Scholes pricing</div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-text"><strong>Get ranked picks</strong> — best play first, scored by probability, IV alignment, and risk/reward</div></div>
+    </div>
+  </div>
+  <div class="market-pulse" id="market-pulse">
+    <h3>Market Pulse</h3>
+    <p class="mp-sub">Real-time re-entry signals for options traders</p>
+    <div id="mp-content">
+      <div class="mp-loading">Loading market data...</div>
+    </div>
+  </div>
+
+  <div class="cta-row">
+    <button class="cta-btn secondary" onclick="document.getElementById('search-landing').focus()">Try Free — 2 Strategies</button>
+    <button class="cta-btn primary" onclick="showUpgradeModal()">Unlock All — $10/mo</button>
+  </div>
+</div>
+
+<!-- Results Page -->
+<div class="results" id="results">
+  <div class="results-header">
+    <div class="results-ticker">
+      <h2 id="results-symbol"></h2>
+      <span class="results-price" id="results-price"></span>
+    </div>
+    <input type="text" class="results-search" id="search-results" placeholder="Search another ticker..." autocomplete="off">
+  </div>
+  <div class="results-grid">
+    <div class="strat-panel" id="strat-panel"></div>
+    <div class="side-panel" id="side-panel"></div>
+  </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" id="detail-modal" onclick="if(event.target===this)closeDetailModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="detail-modal-title">Strategy Details</h3>
+      <button class="modal-close" onclick="closeDetailModal()">&#10005;</button>
+    </div>
+    <div class="modal-body" id="detail-modal-body"></div>
+  </div>
+</div>
+
+<!-- Upgrade Modal -->
+<div class="upgrade-overlay" id="upgrade-modal" onclick="if(event.target===this)closeUpgradeModal()">
+  <div class="upgrade-modal">
+    <h2>Unlock All 14 Strategies</h2>
+    <div class="price">$10<span style="font-size:16px;color:var(--dim);font-weight:400">/month</span></div>
+    <div class="price-sub">Cancel anytime</div>
+    <div class="upgrade-features">
+      <div class="upgrade-feature"><span class="uf-check">&#10003;</span> All 14 strategy types ranked</div>
+      <div class="upgrade-feature"><span class="uf-check">&#10003;</span> Full payoff diagrams</div>
+      <div class="upgrade-feature"><span class="uf-check">&#10003;</span> IV-optimized scoring algorithm</div>
+      <div class="upgrade-feature"><span class="uf-check">&#10003;</span> Detailed Greeks breakdown</div>
+      <div class="upgrade-feature"><span class="uf-check">&#10003;</span> Save & track strategies</div>
+      <div class="upgrade-feature"><span class="uf-check">&#10003;</span> Options chain viewer</div>
+    </div>
+    <button class="upgrade-cta" onclick="startCheckout()">Subscribe — $10/month</button>
+    <button class="upgrade-dismiss" onclick="closeUpgradeModal()">Maybe later</button>
+  </div>
+</div>
+
+<!-- Sign In Modal -->
+<div class="signin-overlay" id="signin-modal" onclick="if(event.target===this)closeSignIn()">
+  <div class="signin-modal">
+    <h2>Sign In</h2>
+    <p class="signin-sub">Sign in to save strategies and manage your subscription</p>
+    <div id="google-signin-container"></div>
+    <button class="guest-btn" onclick="signInAsGuest()">Continue as Guest</button>
+    <button class="signin-close" onclick="closeSignIn()">Close</button>
+  </div>
+</div>
+
+<script>
+// ===== STATE =====
+let currentUser = null;
+let userSubscription = { tier: 'free', active: false };
+const FREE_STRATEGY_LIMIT = 2;
+let lastResult = null;
+let userSavedStrategies = [];
+let rawData = null; // For HV estimation (loaded from chart API)
+
+// ===== OPTIONS ENGINE (ported from ChartNova) =====
+let optionsCache = {};
+const OPTIONS_CACHE_TTL = 120000;
+
+async function fetchOptionsChain(symbol, expDate) {
+  const key = symbol + '_' + (expDate || 'default');
+  const cached = optionsCache[key];
+  if (cached && Date.now() - cached.timestamp < OPTIONS_CACHE_TTL) return cached.data;
+  const qs = expDate ? `?date=${expDate}` : '';
+  const resp = await fetch(`/api/options/${symbol}${qs}`);
+  const json = await resp.json();
+  if (!json.optionChain || !json.optionChain.result || !json.optionChain.result.length) throw new Error('No options data');
+  const data = json.optionChain.result[0];
+  optionsCache[key] = { data, timestamp: Date.now() };
+  return data;
+}
+
+// Black-Scholes Engine
+function normalCDF(x) {
+  const a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741, a4 = -1.453152027, a5 = 1.061405429, p = 0.3275911;
+  const sign = x < 0 ? -1 : 1;
+  x = Math.abs(x) / Math.sqrt(2);
+  const t = 1.0 / (1.0 + p * x);
+  const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+  return 0.5 * (1.0 + sign * y);
+}
+
+function blackScholesGreeks(S, K, T, r, sigma, type) {
+  if (T <= 0 || sigma <= 0) return { delta: 0, gamma: 0, theta: 0, vega: 0 };
+  const sqrtT = Math.sqrt(T);
+  const d1 = (Math.log(S / K) + (r + 0.5 * sigma * sigma) * T) / (sigma * sqrtT);
+  const d2 = d1 - sigma * sqrtT;
+  const nd1 = Math.exp(-d1 * d1 / 2) / Math.sqrt(2 * Math.PI);
+  const gamma = nd1 / (S * sigma * sqrtT);
+  const vega = S * nd1 * sqrtT / 100;
+  if (type === 'call') {
+    return { delta: normalCDF(d1), gamma, theta: (-(S * nd1 * sigma) / (2 * sqrtT) - r * K * Math.exp(-r * T) * normalCDF(d2)) / 365, vega };
+  } else {
+    return { delta: normalCDF(d1) - 1, gamma, theta: (-(S * nd1 * sigma) / (2 * sqrtT) + r * K * Math.exp(-r * T) * normalCDF(-d2)) / 365, vega };
+  }
+}
+
+function estimateIVRankFromHV(currentIV) {
+  if (!rawData || rawData.length < 20) return 50;
+  const closes = rawData.map(d => d.close);
+  const returns = [];
+  for (let i = 1; i < closes.length; i++) returns.push(Math.log(closes[i] / closes[i - 1]));
+  const mean = returns.reduce((a, b) => a + b, 0) / returns.length;
+  const variance = returns.reduce((a, b) => a + (b - mean) ** 2, 0) / returns.length;
+  const hvAnnual = Math.sqrt(variance * 252);
+  const hvLow = hvAnnual * 0.6;
+  const hvHigh = hvAnnual * 1.8;
+  if (hvHigh <= hvLow) return 50;
+  return Math.max(0, Math.min(100, ((currentIV - hvLow) / (hvHigh - hvLow)) * 100));
+}
+
+// Strategy Construction
+function buildStrategies(calls, puts, S, T, avgIV) {
+  const strategies = [];
+  const r = 0.05;
+  const atmIdx = findATMIndex(calls, S);
+  if (atmIdx < 0) return strategies;
+  const mid = (c) => c ? ((c.bid || 0) + (c.ask || c.lastPrice || 0)) / 2 || c.lastPrice || 0 : 0;
+  const atmCallIdx = atmIdx;
+  const atmPutIdx = findATMIndex(puts, S);
+
+  // Long Call
+  for (let i = Math.max(0, atmCallIdx - 1); i <= Math.min(calls.length - 1, atmCallIdx + 2); i++) {
+    const c = calls[i]; const price = mid(c); if (price <= 0) continue;
+    const greeks = blackScholesGreeks(S, c.strike, T, r, c.impliedVolatility || avgIV, 'call');
+    strategies.push({ name: 'Long Call', sentiment: 'bullish',
+      legs: [{ action: 'Buy', type: 'Call', strike: c.strike, price, qty: 1 }],
+      maxProfit: Infinity, maxLoss: price * 100, breakeven: [c.strike + price],
+      prob: 1 - normalCDF((Math.log((c.strike + price) / S) + (r - 0.5 * (c.impliedVolatility || avgIV) ** 2) * T) / ((c.impliedVolatility || avgIV) * Math.sqrt(T))),
+      greeks, volume: c.volume || 0, bidAskSpread: (c.ask || 0) - (c.bid || 0), iv: c.impliedVolatility || avgIV
+    });
+  }
+
+  // Long Put
+  if (atmPutIdx >= 0) {
+    for (let i = Math.max(0, atmPutIdx - 2); i <= Math.min(puts.length - 1, atmPutIdx + 1); i++) {
+      const p = puts[i]; const price = mid(p); if (price <= 0) continue;
+      const greeks = blackScholesGreeks(S, p.strike, T, r, p.impliedVolatility || avgIV, 'put');
+      strategies.push({ name: 'Long Put', sentiment: 'bearish',
+        legs: [{ action: 'Buy', type: 'Put', strike: p.strike, price, qty: 1 }],
+        maxProfit: (p.strike - price) * 100, maxLoss: price * 100, breakeven: [p.strike - price],
+        prob: normalCDF((Math.log((p.strike - price) / S) + (r - 0.5 * (p.impliedVolatility || avgIV) ** 2) * T) / ((p.impliedVolatility || avgIV) * Math.sqrt(T))),
+        greeks, volume: p.volume || 0, bidAskSpread: (p.ask || 0) - (p.bid || 0), iv: p.impliedVolatility || avgIV
+      });
+    }
+  }
+
+  // Covered Call
+  for (let i = atmCallIdx + 1; i <= Math.min(calls.length - 1, atmCallIdx + 4); i++) {
+    const c = calls[i]; const price = mid(c); if (price <= 0) continue;
+    const greeks = blackScholesGreeks(S, c.strike, T, r, c.impliedVolatility || avgIV, 'call');
+    greeks.delta = 1 - greeks.delta;
+    strategies.push({ name: 'Covered Call', sentiment: 'neutral',
+      legs: [{ action: 'Hold', type: 'Stock', strike: S, price: S, qty: 100 }, { action: 'Sell', type: 'Call', strike: c.strike, price, qty: 1 }],
+      maxProfit: ((c.strike - S) + price) * 100, maxLoss: (S - price) * 100, breakeven: [S - price],
+      prob: normalCDF((Math.log(c.strike / S) + (r - 0.5 * (c.impliedVolatility || avgIV) ** 2) * T) / ((c.impliedVolatility || avgIV) * Math.sqrt(T))),
+      greeks, volume: c.volume || 0, bidAskSpread: (c.ask || 0) - (c.bid || 0), iv: c.impliedVolatility || avgIV
+    });
+  }
+
+  // Cash-Secured Put
+  if (atmPutIdx >= 0) {
+    for (let i = Math.max(0, atmPutIdx - 3); i <= atmPutIdx; i++) {
+      const p = puts[i]; const price = mid(p); if (price <= 0) continue;
+      const greeks = blackScholesGreeks(S, p.strike, T, r, p.impliedVolatility || avgIV, 'put');
+      greeks.delta = -greeks.delta;
+      strategies.push({ name: 'Cash-Secured Put', sentiment: 'bullish',
+        legs: [{ action: 'Sell', type: 'Put', strike: p.strike, price, qty: 1 }],
+        maxProfit: price * 100, maxLoss: (p.strike - price) * 100, breakeven: [p.strike - price],
+        prob: 1 - normalCDF((Math.log((p.strike - price) / S) + (r - 0.5 * (p.impliedVolatility || avgIV) ** 2) * T) / ((p.impliedVolatility || avgIV) * Math.sqrt(T))),
+        greeks, volume: p.volume || 0, bidAskSpread: (p.ask || 0) - (p.bid || 0), iv: p.impliedVolatility || avgIV
+      });
+    }
+  }
+
+  // Bull Call Spread
+  for (let i = Math.max(0, atmCallIdx - 1); i < Math.min(calls.length - 1, atmCallIdx + 3); i++) {
+    for (let w = 1; w <= Math.min(5, calls.length - 1 - i); w++) {
+      const cA = calls[i], cB = calls[i + w]; const pA = mid(cA), pB = mid(cB);
+      if (pA <= 0 || pA <= pB) continue;
+      const net = pA - pB, width = cB.strike - cA.strike;
+      const gA = blackScholesGreeks(S, cA.strike, T, r, cA.impliedVolatility || avgIV, 'call');
+      const gB = blackScholesGreeks(S, cB.strike, T, r, cB.impliedVolatility || avgIV, 'call');
+      strategies.push({ name: 'Bull Call Spread', sentiment: 'bullish',
+        legs: [{ action: 'Buy', type: 'Call', strike: cA.strike, price: pA, qty: 1 }, { action: 'Sell', type: 'Call', strike: cB.strike, price: pB, qty: 1 }],
+        maxProfit: (width - net) * 100, maxLoss: net * 100, breakeven: [cA.strike + net],
+        prob: normalCDF((Math.log(cB.strike / S) + (r - 0.5 * avgIV ** 2) * T) / (avgIV * Math.sqrt(T))) - normalCDF((Math.log((cA.strike + net) / S) + (r - 0.5 * avgIV ** 2) * T) / (avgIV * Math.sqrt(T))),
+        greeks: { delta: gA.delta - gB.delta, gamma: gA.gamma - gB.gamma, theta: gA.theta - gB.theta, vega: gA.vega - gB.vega },
+        volume: Math.min(cA.volume || 0, cB.volume || 0), bidAskSpread: ((cA.ask || 0) - (cA.bid || 0) + (cB.ask || 0) - (cB.bid || 0)), iv: avgIV
+      });
+    }
+  }
+
+  // Bear Put Spread
+  if (atmPutIdx >= 0) {
+    for (let i = Math.min(puts.length - 1, atmPutIdx + 1); i >= Math.max(1, atmPutIdx - 2); i--) {
+      for (let w = 1; w <= Math.min(5, i); w++) {
+        const pA = puts[i], pB = puts[i - w]; const prA = mid(pA), prB = mid(pB);
+        if (prA <= 0 || prA <= prB) continue;
+        const net = prA - prB, width = pA.strike - pB.strike;
+        const gA = blackScholesGreeks(S, pA.strike, T, r, pA.impliedVolatility || avgIV, 'put');
+        const gB = blackScholesGreeks(S, pB.strike, T, r, pB.impliedVolatility || avgIV, 'put');
+        strategies.push({ name: 'Bear Put Spread', sentiment: 'bearish',
+          legs: [{ action: 'Buy', type: 'Put', strike: pA.strike, price: prA, qty: 1 }, { action: 'Sell', type: 'Put', strike: pB.strike, price: prB, qty: 1 }],
+          maxProfit: (width - net) * 100, maxLoss: net * 100, breakeven: [pA.strike - net],
+          prob: normalCDF((Math.log((pA.strike - net) / S) + (r - 0.5 * avgIV ** 2) * T) / (avgIV * Math.sqrt(T))),
+          greeks: { delta: gA.delta - gB.delta, gamma: gA.gamma - gB.gamma, theta: gA.theta - gB.theta, vega: gA.vega - gB.vega },
+          volume: Math.min(pA.volume || 0, pB.volume || 0), bidAskSpread: ((pA.ask || 0) - (pA.bid || 0) + (pB.ask || 0) - (pB.bid || 0)), iv: avgIV
+        });
+      }
+    }
+  }
+
+  // Bull Put Spread
+  if (atmPutIdx >= 0) {
+    for (let i = Math.max(0, atmPutIdx - 2); i <= Math.min(puts.length - 2, atmPutIdx + 1); i++) {
+      for (let w = 1; w <= Math.min(5, i); w++) {
+        const pSell = puts[i], pBuy = puts[i - w]; const prSell = mid(pSell), prBuy = mid(pBuy);
+        if (prSell <= prBuy) continue;
+        const credit = prSell - prBuy, width = pSell.strike - pBuy.strike;
+        const gS = blackScholesGreeks(S, pSell.strike, T, r, pSell.impliedVolatility || avgIV, 'put');
+        const gB = blackScholesGreeks(S, pBuy.strike, T, r, pBuy.impliedVolatility || avgIV, 'put');
+        strategies.push({ name: 'Bull Put Spread', sentiment: 'bullish',
+          legs: [{ action: 'Sell', type: 'Put', strike: pSell.strike, price: prSell, qty: 1 }, { action: 'Buy', type: 'Put', strike: pBuy.strike, price: prBuy, qty: 1 }],
+          maxProfit: credit * 100, maxLoss: (width - credit) * 100, breakeven: [pSell.strike - credit],
+          prob: 1 - normalCDF((Math.log((pSell.strike - credit) / S) + (r - 0.5 * avgIV ** 2) * T) / (avgIV * Math.sqrt(T))),
+          greeks: { delta: -(gS.delta - gB.delta), gamma: -(gS.gamma - gB.gamma), theta: -(gS.theta - gB.theta), vega: -(gS.vega - gB.vega) },
+          volume: Math.min(pSell.volume || 0, pBuy.volume || 0), bidAskSpread: ((pSell.ask || 0) - (pSell.bid || 0) + (pBuy.ask || 0) - (pBuy.bid || 0)), iv: avgIV
+        });
+      }
+    }
+  }
+
+  // Bear Call Spread
+  for (let i = atmCallIdx; i <= Math.min(calls.length - 2, atmCallIdx + 3); i++) {
+    for (let w = 1; w <= Math.min(5, calls.length - 1 - i); w++) {
+      const cSell = calls[i], cBuy = calls[i + w]; const prSell = mid(cSell), prBuy = mid(cBuy);
+      if (prSell <= prBuy) continue;
+      const credit = prSell - prBuy, width = cBuy.strike - cSell.strike;
+      const gS = blackScholesGreeks(S, cSell.strike, T, r, cSell.impliedVolatility || avgIV, 'call');
+      const gB = blackScholesGreeks(S, cBuy.strike, T, r, cBuy.impliedVolatility || avgIV, 'call');
+      strategies.push({ name: 'Bear Call Spread', sentiment: 'bearish',
+        legs: [{ action: 'Sell', type: 'Call', strike: cSell.strike, price: prSell, qty: 1 }, { action: 'Buy', type: 'Call', strike: cBuy.strike, price: prBuy, qty: 1 }],
+        maxProfit: credit * 100, maxLoss: (width - credit) * 100, breakeven: [cSell.strike + credit],
+        prob: normalCDF((Math.log((cSell.strike + credit) / S) + (r - 0.5 * avgIV ** 2) * T) / (avgIV * Math.sqrt(T))),
+        greeks: { delta: -(gS.delta - gB.delta), gamma: -(gS.gamma - gB.gamma), theta: -(gS.theta - gB.theta), vega: -(gS.vega - gB.vega) },
+        volume: Math.min(cSell.volume || 0, cBuy.volume || 0), bidAskSpread: ((cSell.ask || 0) - (cSell.bid || 0) + (cBuy.ask || 0) - (cBuy.bid || 0)), iv: avgIV
+      });
+    }
+  }
+
+  // Iron Condor
+  if (atmPutIdx >= 0) {
+    for (let w = 1; w <= 3; w++) {
+      const putSellIdx = Math.max(0, atmPutIdx - 1), putBuyIdx = putSellIdx - w;
+      const callSellIdx = Math.min(calls.length - 1, atmCallIdx + 1), callBuyIdx = callSellIdx + w;
+      if (putBuyIdx < 0 || callBuyIdx >= calls.length) continue;
+      const ps = puts[putSellIdx], pb = puts[putBuyIdx], cs = calls[callSellIdx], cb = calls[callBuyIdx];
+      const prPS = mid(ps), prPB = mid(pb), prCS = mid(cs), prCB = mid(cb);
+      const credit = (prPS - prPB) + (prCS - prCB);
+      if (credit <= 0) continue;
+      const wingWidth = ps.strike - pb.strike;
+      strategies.push({ name: 'Iron Condor', sentiment: 'neutral',
+        legs: [
+          { action: 'Sell', type: 'Put', strike: ps.strike, price: prPS, qty: 1 },
+          { action: 'Buy', type: 'Put', strike: pb.strike, price: prPB, qty: 1 },
+          { action: 'Sell', type: 'Call', strike: cs.strike, price: prCS, qty: 1 },
+          { action: 'Buy', type: 'Call', strike: cb.strike, price: prCB, qty: 1 }
+        ],
+        maxProfit: credit * 100, maxLoss: (wingWidth - credit) * 100,
+        breakeven: [ps.strike - credit, cs.strike + credit],
+        prob: normalCDF((Math.log((cs.strike + credit) / S) + (r - 0.5 * avgIV ** 2) * T) / (avgIV * Math.sqrt(T))) - normalCDF((Math.log((ps.strike - credit) / S) + (r - 0.5 * avgIV ** 2) * T) / (avgIV * Math.sqrt(T))),
+        greeks: { delta: 0, gamma: 0, theta: 0, vega: 0 },
+        volume: Math.min(ps.volume || 0, pb.volume || 0, cs.volume || 0, cb.volume || 0),
+        bidAskSpread: ((ps.ask||0)-(ps.bid||0)+(pb.ask||0)-(pb.bid||0)+(cs.ask||0)-(cs.bid||0)+(cb.ask||0)-(cb.bid||0)), iv: avgIV
+      });
+    }
+  }
+
+  // Straddle
+  if (atmPutIdx >= 0 && calls[atmCallIdx] && puts[atmPutIdx]) {
+    const c = calls[atmCallIdx], p = puts[atmPutIdx];
+    const pC = mid(c), pP = mid(p);
+    if (pC > 0 && pP > 0) {
+      const totalCost = pC + pP;
+      const gC = blackScholesGreeks(S, c.strike, T, r, c.impliedVolatility || avgIV, 'call');
+      const gP = blackScholesGreeks(S, p.strike, T, r, p.impliedVolatility || avgIV, 'put');
+      strategies.push({ name: 'Straddle', sentiment: 'volatility',
+        legs: [{ action: 'Buy', type: 'Call', strike: c.strike, price: pC, qty: 1 }, { action: 'Buy', type: 'Put', strike: p.strike, price: pP, qty: 1 }],
+        maxProfit: Infinity, maxLoss: totalCost * 100,
+        breakeven: [c.strike - totalCost, c.strike + totalCost],
+        prob: 1 - (normalCDF((Math.log((c.strike + totalCost) / S)) / (avgIV * Math.sqrt(T))) - normalCDF((Math.log((c.strike - totalCost) / S)) / (avgIV * Math.sqrt(T)))),
+        greeks: { delta: gC.delta + gP.delta, gamma: gC.gamma + gP.gamma, theta: gC.theta + gP.theta, vega: gC.vega + gP.vega },
+        volume: Math.min(c.volume || 0, p.volume || 0), bidAskSpread: ((c.ask||0)-(c.bid||0)+(p.ask||0)-(p.bid||0)), iv: avgIV
+      });
+    }
+  }
+
+  // Strangle
+  if (atmPutIdx >= 0) {
+    for (let offset = 1; offset <= 3; offset++) {
+      const ci = atmCallIdx + offset, pi = atmPutIdx - offset;
+      if (ci >= calls.length || pi < 0) continue;
+      const c = calls[ci], p = puts[pi]; const pC = mid(c), pP = mid(p);
+      if (pC <= 0 || pP <= 0) continue;
+      const totalCost = pC + pP;
+      const gC = blackScholesGreeks(S, c.strike, T, r, c.impliedVolatility || avgIV, 'call');
+      const gP = blackScholesGreeks(S, p.strike, T, r, p.impliedVolatility || avgIV, 'put');
+      strategies.push({ name: 'Strangle', sentiment: 'volatility',
+        legs: [{ action: 'Buy', type: 'Call', strike: c.strike, price: pC, qty: 1 }, { action: 'Buy', type: 'Put', strike: p.strike, price: pP, qty: 1 }],
+        maxProfit: Infinity, maxLoss: totalCost * 100,
+        breakeven: [p.strike - totalCost, c.strike + totalCost],
+        prob: 1 - (normalCDF((Math.log((c.strike + totalCost) / S)) / (avgIV * Math.sqrt(T))) - normalCDF((Math.log((p.strike - totalCost) / S)) / (avgIV * Math.sqrt(T)))),
+        greeks: { delta: gC.delta + gP.delta, gamma: gC.gamma + gP.gamma, theta: gC.theta + gP.theta, vega: gC.vega + gP.vega },
+        volume: Math.min(c.volume || 0, p.volume || 0), bidAskSpread: ((c.ask||0)-(c.bid||0)+(p.ask||0)-(p.bid||0)), iv: avgIV
+      });
+    }
+  }
+
+  // Butterfly
+  for (let i = Math.max(0, atmCallIdx - 2); i <= Math.min(calls.length - 3, atmCallIdx + 2); i++) {
+    for (let w = 1; w <= Math.min(3, Math.floor((calls.length - 1 - i) / 2)); w++) {
+      const cLow = calls[i], cMid = calls[i + w], cHigh = calls[i + 2 * w];
+      const pL = mid(cLow), pM = mid(cMid), pH = mid(cHigh);
+      const net = pL - 2 * pM + pH;
+      if (net <= 0) continue;
+      const width = cMid.strike - cLow.strike;
+      strategies.push({ name: 'Butterfly', sentiment: 'neutral',
+        legs: [
+          { action: 'Buy', type: 'Call', strike: cLow.strike, price: pL, qty: 1 },
+          { action: 'Sell', type: 'Call', strike: cMid.strike, price: pM, qty: 2 },
+          { action: 'Buy', type: 'Call', strike: cHigh.strike, price: pH, qty: 1 }
+        ],
+        maxProfit: (width - net) * 100, maxLoss: net * 100,
+        breakeven: [cLow.strike + net, cHigh.strike - net],
+        prob: normalCDF((Math.log((cHigh.strike - net) / S)) / (avgIV * Math.sqrt(T))) - normalCDF((Math.log((cLow.strike + net) / S)) / (avgIV * Math.sqrt(T))),
+        greeks: { delta: 0, gamma: 0, theta: 0, vega: 0 },
+        volume: Math.min(cLow.volume || 0, cMid.volume || 0, cHigh.volume || 0),
+        bidAskSpread: ((cLow.ask||0)-(cLow.bid||0)+2*((cMid.ask||0)-(cMid.bid||0))+(cHigh.ask||0)-(cHigh.bid||0)), iv: avgIV
+      });
+    }
+  }
+
+  return strategies;
+}
+
+function findATMIndex(contracts, S) {
+  if (!contracts || !contracts.length) return -1;
+  let best = 0, bestDiff = Math.abs(contracts[0].strike - S);
+  for (let i = 1; i < contracts.length; i++) {
+    const diff = Math.abs(contracts[i].strike - S);
+    if (diff < bestDiff) { best = i; bestDiff = diff; }
+  }
+  return best;
+}
+
+function filterContracts(contracts, S) {
+  const lo = S * 0.9, hi = S * 1.1;
+  return contracts.filter(c => c.strike >= lo && c.strike <= hi);
+}
+
+// Scoring
+function scoreStrategy(s, ivRank) {
+  let rr;
+  if (s.maxProfit === Infinity) { rr = 3; } else { rr = Math.min(5, s.maxProfit / Math.max(1, s.maxLoss)); }
+  const rrScore = (rr / 5) * 20;
+  const prob = Math.max(0, Math.min(1, s.prob || 0));
+  const probScore = prob * 20;
+  const cappedProfit = s.maxProfit === Infinity ? s.maxLoss * 3 : s.maxProfit;
+  const ev = prob * cappedProfit - (1 - prob) * s.maxLoss;
+  const evNorm = Math.max(0, Math.min(1, (ev / Math.max(1, s.maxLoss) + 1) / 2));
+  const evScore = evNorm * 15;
+  const isNetSeller = s.name.includes('Covered') || s.name.includes('Cash-Secured') || s.name === 'Iron Condor' || s.name.includes('Bull Put') || s.name.includes('Bear Call');
+  const isNetBuyer = s.name === 'Long Call' || s.name === 'Long Put' || s.name === 'Straddle' || s.name === 'Strangle';
+  const isDebitSpread = s.name === 'Bull Call Spread' || s.name === 'Bear Put Spread';
+  let ivScore = 0;
+  if (isNetSeller) { ivScore = (ivRank / 100) * 25; }
+  else if (isNetBuyer) { ivScore = ((100 - ivRank) / 100) * 25; }
+  else if (isDebitSpread) { ivScore = ((100 - ivRank * 0.5) / 100) * 25; }
+  else { ivScore = 12.5; }
+  const liqScore = Math.min(10, (Math.log10(Math.max(1, s.volume)) / 4) * 10);
+  const avgLegPrice = s.legs.reduce((a, l) => a + l.price, 0) / s.legs.length;
+  const spreadPct = avgLegPrice > 0 ? s.bidAskSpread / s.legs.length / avgLegPrice : 1;
+  const baScore = Math.max(0, (1 - Math.min(1, spreadPct)) * 10);
+  const total = Math.round(rrScore + probScore + evScore + ivScore + liqScore + baScore);
+  return { total: Math.max(0, Math.min(100, total)), prob, rr, ev };
+}
+
+// Main analyzer
+async function analyzeOptionsStrategies(symbol) {
+  // Fetch price data for HV estimation
+  try {
+    const chartResp = await fetch(`/api/chart/${symbol}?range=6mo&interval=1d`);
+    const chartJson = await chartResp.json();
+    const result = chartJson.chart?.result?.[0];
+    if (result?.indicators?.quote?.[0]) {
+      const q = result.indicators.quote[0];
+      rawData = result.timestamp.map((t, i) => ({ close: q.close[i] })).filter(d => d.close);
+    }
+  } catch(e) { rawData = null; }
+
+  const data = await fetchOptionsChain(symbol);
+  const quote = data.quote || {};
+  const S = quote.regularMarketPrice || 0;
+  if (!S) throw new Error('No price data');
+
+  const expirations = data.expirationDates || [];
+  const now = Math.floor(Date.now() / 1000);
+  const targetExps = expirations.filter(e => { const dte = (e - now) / 86400; return dte >= 15 && dte <= 60; });
+  if (!targetExps.length && expirations.length) targetExps.push(expirations[0]);
+  if (!targetExps.length) throw new Error('No suitable expirations');
+
+  const allStrategies = [];
+  let allChainData = [];
+
+  for (const exp of targetExps.slice(0, 3)) {
+    const chainData = await fetchOptionsChain(symbol, exp);
+    const opts = chainData.options && chainData.options[0];
+    if (!opts) continue;
+    const calls = filterContracts(opts.calls || [], S);
+    const puts = filterContracts(opts.puts || [], S);
+    if (!calls.length && !puts.length) continue;
+    allChainData.push({ expiration: exp, calls: opts.calls || [], puts: opts.puts || [] });
+    const allIVs = [...calls, ...puts].map(c => c.impliedVolatility).filter(v => v > 0);
+    const avgIV = allIVs.length ? allIVs.reduce((a, b) => a + b, 0) / allIVs.length : 0.3;
+    const T = Math.max(0.01, (exp - now) / (365 * 86400));
+    const dte = Math.round((exp - now) / 86400);
+    const strats = buildStrategies(calls, puts, S, T, avgIV);
+    strats.forEach(s => {
+      s.expiration = exp;
+      s.dte = dte;
+      s.expirationDate = new Date(exp * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' });
+    });
+    allStrategies.push(...strats);
+  }
+
+  // Calendar & Diagonal spreads
+  if (allChainData.length >= 2) {
+    for (let ei = 0; ei < allChainData.length - 1; ei++) {
+      const near = allChainData[ei], far = allChainData[ei + 1];
+      const nearCalls = filterContracts(near.calls, S), farCalls = filterContracts(far.calls, S);
+      const Tnear = Math.max(0.01, (near.expiration - now) / (365 * 86400));
+      const Tfar = Math.max(0.01, (far.expiration - now) / (365 * 86400));
+      const farDTE = Math.round((far.expiration - now) / 86400);
+      const nearDate = new Date(near.expiration * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' });
+      const farDate = new Date(far.expiration * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' });
+      const mid = (c) => c ? ((c.bid || 0) + (c.ask || c.lastPrice || 0)) / 2 || c.lastPrice || 0 : 0;
+
+      // Calendar Spread
+      const nearATM = findATMIndex(nearCalls, S);
+      if (nearATM >= 0) {
+        for (let offset = -1; offset <= 1; offset++) {
+          const ni = nearATM + offset;
+          if (ni < 0 || ni >= nearCalls.length) continue;
+          const nearC = nearCalls[ni];
+          const farC = farCalls.find(c => c.strike === nearC.strike);
+          if (!farC) continue;
+          const nearP = mid(nearC), farP = mid(farC);
+          if (farP <= nearP) continue;
+          const net = farP - nearP;
+          allStrategies.push({
+            name: 'Calendar Spread', sentiment: 'neutral',
+            legs: [{ action: 'Sell', type: 'Call', strike: nearC.strike, price: nearP, qty: 1 }, { action: 'Buy', type: 'Call', strike: farC.strike, price: farP, qty: 1 }],
+            maxProfit: nearP * 0.7 * 100, maxLoss: net * 100,
+            breakeven: [nearC.strike - nearP * 0.3, nearC.strike + nearP * 0.3],
+            prob: 0.40,
+            greeks: { delta: blackScholesGreeks(S, farC.strike, Tfar, 0.05, farC.impliedVolatility || 0.3, 'call').delta - blackScholesGreeks(S, nearC.strike, Tnear, 0.05, nearC.impliedVolatility || 0.3, 'call').delta, gamma: 0, theta: blackScholesGreeks(S, nearC.strike, Tnear, 0.05, nearC.impliedVolatility || 0.3, 'call').theta * -1, vega: 0 },
+            volume: Math.min(nearC.volume || 0, farC.volume || 0),
+            bidAskSpread: ((nearC.ask||0)-(nearC.bid||0)+(farC.ask||0)-(farC.bid||0)),
+            iv: ((nearC.impliedVolatility || 0.3) + (farC.impliedVolatility || 0.3)) / 2,
+            expiration: far.expiration, dte: farDTE, expirationDate: nearDate + ' / ' + farDate
+          });
+        }
+      }
+
+      // Diagonal Spread
+      if (nearATM >= 0) {
+        for (let sellOff = 0; sellOff <= 2; sellOff++) {
+          const ni = nearATM + sellOff;
+          if (ni >= nearCalls.length) continue;
+          const nearC = nearCalls[ni];
+          const farIdx = findATMIndex(farCalls, S);
+          if (farIdx < 0) continue;
+          for (let buyOff = -1; buyOff <= 1; buyOff++) {
+            const fi = farIdx + buyOff;
+            if (fi < 0 || fi >= farCalls.length) continue;
+            const farC = farCalls[fi];
+            if (farC.strike === nearC.strike) continue;
+            const nearP = mid(nearC), farP = mid(farC);
+            if (farP <= nearP) continue;
+            const net = farP - nearP;
+            const dir = farC.strike > nearC.strike ? 'bullish' : 'bearish';
+            allStrategies.push({
+              name: 'Diagonal Spread', sentiment: dir,
+              legs: [{ action: 'Sell', type: 'Call', strike: nearC.strike, price: nearP, qty: 1 }, { action: 'Buy', type: 'Call', strike: farC.strike, price: farP, qty: 1 }],
+              maxProfit: nearP * 0.6 * 100, maxLoss: net * 100,
+              breakeven: [farC.strike > nearC.strike ? nearC.strike + net * 0.4 : nearC.strike - net * 0.4],
+              prob: 0.35,
+              greeks: { delta: blackScholesGreeks(S, farC.strike, Tfar, 0.05, farC.impliedVolatility || 0.3, 'call').delta - blackScholesGreeks(S, nearC.strike, Tnear, 0.05, nearC.impliedVolatility || 0.3, 'call').delta, gamma: 0, theta: 0, vega: 0 },
+              volume: Math.min(nearC.volume || 0, farC.volume || 0),
+              bidAskSpread: ((nearC.ask||0)-(nearC.bid||0)+(farC.ask||0)-(farC.bid||0)),
+              iv: ((nearC.impliedVolatility || 0.3) + (farC.impliedVolatility || 0.3)) / 2,
+              expiration: far.expiration, dte: farDTE, expirationDate: nearDate + ' / ' + farDate
+            });
+          }
+        }
+      }
+    }
+  }
+
+  // IV Rank
+  const allIVs = [];
+  allChainData.forEach(cd => { [...cd.calls, ...cd.puts].forEach(c => { if (c.impliedVolatility > 0) allIVs.push(c.impliedVolatility); }); });
+  const avgIV = allIVs.length ? allIVs.reduce((a, b) => a + b, 0) / allIVs.length : 0.3;
+  const ivHigh = allIVs.length ? Math.max(...allIVs) : avgIV;
+  const ivLow = allIVs.length ? Math.min(...allIVs) : avgIV;
+  let ivRank = estimateIVRankFromHV(avgIV);
+  let ivSource = 'estimated';
+  try {
+    const ivResp = await fetch(`/api/options-data?action=iv-history&symbol=${symbol}`);
+    const ivData = await ivResp.json();
+    if (ivData.history && ivData.history.length >= 20) {
+      const ivValues = ivData.history.map(r => r.avg_iv).sort((a, b) => a - b);
+      const below = ivValues.filter(v => v <= avgIV).length;
+      ivRank = Math.round((below / ivValues.length) * 100);
+      ivSource = ivData.history.length + 'd history';
+    }
+  } catch (e) { }
+
+  // Record today's IV
+  try {
+    fetch('/api/options-data?action=record-iv', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ symbol, avg_iv: avgIV, iv_high: ivHigh, iv_low: ivLow, price: S })
+    });
+  } catch (e) { }
+
+  // Score
+  allStrategies.forEach(s => {
+    const scores = scoreStrategy(s, ivRank);
+    s.score = scores.total; s.probDisplay = scores.prob; s.rrDisplay = scores.rr; s.evDisplay = scores.ev;
+  });
+  allStrategies.sort((a, b) => b.score - a.score);
+
+  // Deduplicate — max 14
+  const seen = new Map();
+  const unique = [];
+  allStrategies.forEach(s => {
+    if (unique.length >= 14) return;
+    if (!seen.has(s.name)) { unique.push(s); seen.set(s.name, 1); }
+  });
+
+  return { strategies: unique, ivRank, avgIV, ivSource, price: S, chainData: allChainData, expirations, symbol };
+}
+
+// ===== STRATEGY EXPLANATIONS =====
+const strategyExplanations = {
+  'Long Call': 'Buy a call option when you expect the stock to rise significantly. Your risk is limited to the premium paid. Profits increase as the stock moves above the breakeven (strike + premium).',
+  'Long Put': 'Buy a put option when you expect the stock to fall. Your risk is limited to the premium paid. Profits increase as the stock moves below the breakeven (strike - premium).',
+  'Covered Call': 'Own 100 shares and sell a call against them to generate income. You keep the premium if the stock stays below the strike. Upside is capped at the strike price.',
+  'Cash-Secured Put': 'Sell a put while holding enough cash to buy the shares if assigned. You keep the premium if the stock stays above the strike. Use when willing to buy the stock at a lower price.',
+  'Bull Call Spread': 'Buy a lower-strike call and sell a higher-strike call. Reduces cost vs. a long call but caps your upside. Profits if the stock rises above the lower strike.',
+  'Bear Put Spread': 'Buy a higher-strike put and sell a lower-strike put. Reduces cost vs. a long put but caps your downside profit. Profits if the stock falls below the higher strike.',
+  'Bull Put Spread': 'Sell a higher-strike put and buy a lower-strike put for a net credit. Profits if the stock stays above the sold strike. Risk is limited to the spread width minus credit.',
+  'Bear Call Spread': 'Sell a lower-strike call and buy a higher-strike call for a net credit. Profits if the stock stays below the sold strike. Risk is limited to the spread width minus credit.',
+  'Iron Condor': 'Combine a bull put spread and bear call spread. Profits if the stock stays within the two sold strikes. Limited risk, limited reward. Best in low-volatility environments.',
+  'Straddle': 'Buy both an ATM call and ATM put. Profits from large moves in either direction. Loses if the stock stays near the strike. Best before expected volatility events.',
+  'Strangle': 'Buy an OTM call and OTM put. Cheaper than a straddle but needs a larger move to profit. Profits from significant moves in either direction.',
+  'Butterfly': 'Buy one lower call, sell two middle calls, buy one upper call. Max profit at the middle strike at expiration. Low cost, low risk, low probability play for range-bound stocks.',
+  'Calendar Spread': 'Sell a near-term option and buy the same strike in a later expiration. Profits from faster time decay in the near-term leg. Best when you expect the stock to stay near the strike price.',
+  'Diagonal Spread': 'Sell a near-term option at one strike and buy a later-dated option at a different strike. Combines elements of calendar spreads and vertical spreads.',
+};
+
+// ===== UI RENDERING =====
+
+function isStrategyLocked(index) {
+  return index >= FREE_STRATEGY_LIMIT && !userSubscription.active;
+}
+
+function renderResults(result) {
+  lastResult = result;
+  const { strategies, ivRank, avgIV, ivSource, price, chainData, symbol } = result;
+
+  document.getElementById('results-symbol').textContent = symbol;
+  document.getElementById('results-price').textContent = '$' + price.toFixed(2);
+
+  // Left panel
+  const stratPanel = document.getElementById('strat-panel');
+  const ivColor = ivRank < 30 ? 'var(--green)' : ivRank > 70 ? 'var(--red)' : 'var(--orange)';
+  const ivHint = ivRank < 30 ? 'Low IV \u2014 consider buying premium' : ivRank > 70 ? 'High IV \u2014 consider selling premium' : 'Moderate IV \u2014 balanced strategies';
+  const ivSrcLabel = ivSource === 'estimated' ? 'est.' : ivSource;
+
+  let html = '';
+
+  // IV Banner
+  html += `<div class="iv-banner">
+    <div class="iv-row"><span class="iv-label">IV Rank <span style="font-size:8px;color:var(--dimmer)">(${ivSrcLabel})</span></span><span class="iv-value" style="color:${ivColor}">${Math.round(ivRank)}%</span></div>
+    <div class="iv-bar"><div class="iv-fill" style="width:${ivRank}%;background:${ivColor}"></div></div>
+    <div class="iv-hint">${ivHint} | Avg IV: ${(avgIV * 100).toFixed(1)}%</div>
+  </div>`;
+
+  // Controls
+  html += `<div class="strat-controls">
+    <select id="sentiment-filter" onchange="filterCards()">
+      <option value="all">All Strategies</option><option value="bullish">Bullish</option>
+      <option value="bearish">Bearish</option><option value="neutral">Neutral</option>
+      <option value="volatility">Volatility</option>
+    </select>
+    <select id="sort-by" onchange="filterCards()">
+      <option value="score">Sort: Score</option><option value="prob">Sort: Probability</option>
+      <option value="rr">Sort: Risk/Reward</option><option value="ev">Sort: Expected Value</option>
+    </select>
+  </div>`;
+
+  // Saved section
+  html += '<div id="saved-section"></div>';
+
+  // Cards
+  html += '<div class="strat-cards" id="strat-cards">';
+  html += renderStrategyCards(strategies);
+  html += '</div>';
+
+  stratPanel.innerHTML = html;
+
+  // Right panel — chain viewer
+  const sidePanel = document.getElementById('side-panel');
+  let sideHtml = '';
+  if (chainData.length) {
+    sideHtml += '<div class="side-section">';
+    sideHtml += '<div class="side-title">Options Chain</div>';
+    sideHtml += '<div class="chain-tabs">';
+    chainData.forEach((cd, i) => {
+      const date = new Date(cd.expiration * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      sideHtml += `<div class="chain-tab${i === 0 ? ' active' : ''}" onclick="switchChainTab(${i})">${date}</div>`;
+    });
+    sideHtml += '</div>';
+    chainData.forEach((cd, i) => {
+      sideHtml += `<div class="chain-table-wrap chain-data" id="chain-${i}" style="${i > 0 ? 'display:none' : ''}">`;
+      sideHtml += renderChainTable(cd, price);
+      sideHtml += '</div>';
+    });
+    sideHtml += '</div>';
+  }
+  sidePanel.innerHTML = sideHtml;
+
+  // Load saved strategies
+  loadSavedStrategies().then(() => renderSavedSection());
+}
+
+function renderStrategyCards(strategies) {
+  if (!strategies.length) return '<div class="loading-state">No viable strategies found.</div>';
+  return strategies.map((s, i) => {
+    const locked = isStrategyLocked(i);
+    const scoreColor = s.score >= 70 ? 'var(--green)' : s.score >= 40 ? 'var(--orange)' : 'var(--red)';
+    const legsText = s.legs.filter(l => l.type !== 'Stock').map(l => `${l.action} ${l.qty > 1 ? l.qty + 'x ' : ''}${l.strike} ${l.type} @ $${l.price.toFixed(2)}`).join(' | ');
+    const maxP = s.maxProfit === Infinity ? 'Unlimited' : '$' + s.maxProfit.toFixed(0);
+    const maxL = '$' + s.maxLoss.toFixed(0);
+
+    if (locked) {
+      return `<div class="strat-card locked" onclick="showUpgradeModal()">
+        <div class="card-head">
+          <div style="display:flex;align-items:center"><span class="card-rank">${i + 1}</span><span class="card-name">${s.name}</span><span class="opt-badge ${s.sentiment}">${s.sentiment}</span></div>
+          <span class="card-score" style="color:${scoreColor}">${s.score}</span>
+        </div>
+        <div class="lock-overlay"><div class="lock-blur"></div><div class="lock-cta">&#128274; Unlock all 14 strategies \u2014 $10/mo</div></div>
+      </div>`;
+    }
+
+    return `<div class="strat-card" onclick="showDetail(${i})">
+      <div class="card-head">
+        <div style="display:flex;align-items:center"><span class="card-rank">${i + 1}</span><span class="card-name">${s.name}<span class="card-exp">${s.expirationDate || ''} (${s.dte || '?'}d)</span></span><span class="opt-badge ${s.sentiment}">${s.sentiment}</span></div>
+        <span class="card-score" style="color:${scoreColor}">${s.score}</span>
+      </div>
+      <div class="card-legs">${legsText}</div>
+      <div class="card-metrics">
+        <div class="card-metric"><div class="card-metric-label">Score</div><div class="card-metric-val" style="color:${scoreColor}">${s.score}</div></div>
+        <div class="card-metric"><div class="card-metric-label">Prob</div><div class="card-metric-val">${(s.probDisplay * 100).toFixed(0)}%</div></div>
+        <div class="card-metric"><div class="card-metric-label">Max P</div><div class="card-metric-val" style="color:var(--green)">${maxP}</div></div>
+        <div class="card-metric"><div class="card-metric-label">Max L</div><div class="card-metric-val" style="color:var(--red)">${maxL}</div></div>
+      </div>
+      <div class="card-greeks">
+        <div class="card-greek">Delta <span>${s.greeks.delta.toFixed(2)}</span></div>
+        <div class="card-greek">Gamma <span>${s.greeks.gamma.toFixed(3)}</span></div>
+        <div class="card-greek">Theta <span>${s.greeks.theta.toFixed(2)}</span></div>
+        <div class="card-greek">Vega <span>${s.greeks.vega.toFixed(2)}</span></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderChainTable(cd, price) {
+  const strikes = new Map();
+  (cd.calls || []).forEach(c => { const s = strikes.get(c.strike) || {}; s.call = c; strikes.set(c.strike, s); });
+  (cd.puts || []).forEach(p => { const s = strikes.get(p.strike) || {}; s.put = p; strikes.set(p.strike, s); });
+  const sorted = [...strikes.entries()].sort((a, b) => a[0] - b[0]);
+  const lo = price * 0.85, hi = price * 1.15;
+  const filtered = sorted.filter(([k]) => k >= lo && k <= hi);
+
+  let html = `<table class="chain-table"><thead><tr>
+    <th>Vol</th><th>OI</th><th>Bid</th><th>Ask</th><th>IV</th>
+    <th class="strike-col">Strike</th>
+    <th>IV</th><th>Bid</th><th>Ask</th><th>OI</th><th>Vol</th>
+  </tr></thead><tbody>`;
+
+  filtered.forEach(([strike, { call: c, put: p }]) => {
+    const itmCall = c && c.inTheMoney ? ' itm-call' : '';
+    const itmPut = p && p.inTheMoney ? ' itm-put' : '';
+    html += `<tr class="${itmCall}${itmPut}">
+      <td>${c ? (c.volume || 0) : '-'}</td><td>${c ? (c.openInterest || 0) : '-'}</td>
+      <td>${c ? (c.bid || 0).toFixed(2) : '-'}</td><td>${c ? (c.ask || 0).toFixed(2) : '-'}</td>
+      <td>${c && c.impliedVolatility ? (c.impliedVolatility * 100).toFixed(0) + '%' : '-'}</td>
+      <td class="strike-col">${strike.toFixed(1)}</td>
+      <td>${p && p.impliedVolatility ? (p.impliedVolatility * 100).toFixed(0) + '%' : '-'}</td>
+      <td>${p ? (p.bid || 0).toFixed(2) : '-'}</td><td>${p ? (p.ask || 0).toFixed(2) : '-'}</td>
+      <td>${p ? (p.openInterest || 0) : '-'}</td><td>${p ? (p.volume || 0) : '-'}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  return html;
+}
+
+function switchChainTab(idx) {
+  document.querySelectorAll('.chain-tab').forEach((t, i) => t.classList.toggle('active', i === idx));
+  document.querySelectorAll('.chain-data').forEach((d, i) => d.style.display = i === idx ? '' : 'none');
+}
+
+function filterCards() {
+  if (!lastResult) return;
+  const sentiment = document.getElementById('sentiment-filter').value;
+  const sortBy = document.getElementById('sort-by').value;
+  let strats = [...lastResult.strategies];
+  if (sentiment !== 'all') strats = strats.filter(s => s.sentiment === sentiment);
+  if (sortBy === 'prob') strats.sort((a, b) => b.probDisplay - a.probDisplay);
+  else if (sortBy === 'rr') strats.sort((a, b) => (b.rrDisplay || 0) - (a.rrDisplay || 0));
+  else if (sortBy === 'ev') strats.sort((a, b) => (b.evDisplay || 0) - (a.evDisplay || 0));
+  else strats.sort((a, b) => b.score - a.score);
+  document.getElementById('strat-cards').innerHTML = renderStrategyCards(strats);
+}
+
+// ===== DETAIL MODAL =====
+function getFilteredStrategies() {
+  if (!lastResult) return [];
+  const sentiment = document.getElementById('sentiment-filter')?.value || 'all';
+  const sortBy = document.getElementById('sort-by')?.value || 'score';
+  let strats = [...lastResult.strategies];
+  if (sentiment !== 'all') strats = strats.filter(s => s.sentiment === sentiment);
+  if (sortBy === 'prob') strats.sort((a, b) => b.probDisplay - a.probDisplay);
+  else if (sortBy === 'rr') strats.sort((a, b) => (b.rrDisplay || 0) - (a.rrDisplay || 0));
+  else if (sortBy === 'ev') strats.sort((a, b) => (b.evDisplay || 0) - (a.evDisplay || 0));
+  else strats.sort((a, b) => b.score - a.score);
+  return strats;
+}
+
+function showDetail(idx) {
+  const strats = getFilteredStrategies();
+  if (isStrategyLocked(idx)) { showUpgradeModal(); return; }
+  const s = strats[idx];
+  if (!s) return;
+
+  document.getElementById('detail-modal-title').textContent = s.name + ' \u2014 ' + (s.expirationDate || '');
+  const body = document.getElementById('detail-modal-body');
+  const maxP = s.maxProfit === Infinity ? 'Unlimited' : '$' + s.maxProfit.toFixed(2);
+  const maxL = '$' + s.maxLoss.toFixed(2);
+
+  let html = '';
+  html += '<div class="modal-section"><h4>Payoff Diagram</h4><canvas class="payoff-canvas" id="payoff-chart"></canvas></div>';
+
+  html += '<div class="modal-section"><h4>Legs</h4><table class="legs-table"><thead><tr><th>Action</th><th>Type</th><th>Strike</th><th>Price</th><th>Qty</th></tr></thead><tbody>';
+  s.legs.forEach(l => {
+    html += `<tr><td class="${l.action === 'Buy' || l.action === 'Hold' ? 'buy' : 'sell'}">${l.action}</td><td>${l.type}</td><td>$${l.strike.toFixed(2)}</td><td>$${l.price.toFixed(2)}</td><td>${l.qty}</td></tr>`;
+  });
+  html += '</tbody></table></div>';
+
+  html += `<div class="modal-section"><h4>Net Greeks</h4><div class="modal-greeks">
+    <div class="modal-greek"><div class="label">Delta</div><div class="value">${s.greeks.delta.toFixed(3)}</div></div>
+    <div class="modal-greek"><div class="label">Gamma</div><div class="value">${s.greeks.gamma.toFixed(4)}</div></div>
+    <div class="modal-greek"><div class="label">Theta</div><div class="value">${s.greeks.theta.toFixed(3)}</div></div>
+    <div class="modal-greek"><div class="label">Vega</div><div class="value">${s.greeks.vega.toFixed(3)}</div></div>
+  </div></div>`;
+
+  html += `<div class="modal-section"><h4>Key Metrics</h4><div class="modal-greeks">
+    <div class="modal-greek"><div class="label">Max Profit</div><div class="value" style="color:var(--green)">${maxP}</div></div>
+    <div class="modal-greek"><div class="label">Max Loss</div><div class="value" style="color:var(--red)">${maxL}</div></div>
+    <div class="modal-greek"><div class="label">Prob of Profit</div><div class="value">${(s.probDisplay * 100).toFixed(1)}%</div></div>
+    <div class="modal-greek"><div class="label">Score</div><div class="value" style="color:var(--accent)">${s.score}</div></div>
+  </div></div>`;
+
+  html += `<div class="modal-section"><h4>Breakeven${s.breakeven.length > 1 ? 's' : ''}</h4><div class="breakevens">`;
+  s.breakeven.forEach(b => { html += `<span class="breakeven-tag">$${b.toFixed(2)}</span>`; });
+  html += '</div></div>';
+
+  html += `<div class="modal-section"><h4>Strategy Overview</h4><p class="explanation">${strategyExplanations[s.name] || 'A multi-leg options strategy.'}</p></div>`;
+
+  // Save button (only for paid users)
+  if (userSubscription.active) {
+    const isSaved = userSavedStrategies.some(sv => sv.strategy_name === s.name && sv.symbol === lastResult.symbol && JSON.stringify(sv.legs.map(l=>l.strike)) === JSON.stringify(s.legs.filter(l=>l.type!=='Stock').map(l=>l.strike)));
+    html += `<div style="text-align:center;padding:10px 0"><button id="save-btn" onclick="event.stopPropagation();saveStrategy(window._modalStrategy)" style="background:${isSaved ? 'var(--bg3)' : 'var(--accent)'};color:${isSaved ? 'var(--dim)' : '#000'};border:none;padding:10px 28px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit" ${isSaved ? 'disabled' : ''}>${isSaved ? 'Saved' : 'Save Strategy'}</button></div>`;
+  }
+  window._modalStrategy = s;
+
+  body.innerHTML = html;
+  document.getElementById('detail-modal').classList.add('active');
+  setTimeout(() => drawPayoffDiagram(s), 50);
+}
+
+function closeDetailModal() {
+  document.getElementById('detail-modal').classList.remove('active');
+}
+
+// ===== PAYOFF DIAGRAM =====
+function drawPayoffDiagram(strategy) {
+  const canvas = document.getElementById('payoff-chart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  const W = rect.width, H = rect.height;
+
+  const strikes = strategy.legs.map(l => l.strike);
+  const minStrike = Math.min(...strikes), maxStrike = Math.max(...strikes);
+  const spread = maxStrike - minStrike || minStrike * 0.1;
+  const priceLo = minStrike - spread * 1.5, priceHi = maxStrike + spread * 1.5;
+
+  const isCalendarOrDiag = strategy.name === 'Calendar Spread' || strategy.name === 'Diagonal Spread';
+  const points = [];
+  const steps = 200;
+  for (let i = 0; i <= steps; i++) {
+    const price = priceLo + (priceHi - priceLo) * (i / steps);
+    let pnl = 0;
+    if (isCalendarOrDiag) {
+      strategy.legs.forEach(l => {
+        if (l.action === 'Sell') {
+          const intrinsic = l.type === 'Call' ? Math.max(0, price - l.strike) : Math.max(0, l.strike - price);
+          pnl += (l.price - intrinsic) * l.qty * 100;
+        } else {
+          const sigma = strategy.iv || 0.3;
+          const Trem = Math.max(0.01, 8 / 365);
+          const bsVal = l.type === 'Call'
+            ? price * normalCDF((Math.log(price / l.strike) + (0.05 + 0.5 * sigma * sigma) * Trem) / (sigma * Math.sqrt(Trem))) - l.strike * Math.exp(-0.05 * Trem) * normalCDF((Math.log(price / l.strike) + (0.05 - 0.5 * sigma * sigma) * Trem) / (sigma * Math.sqrt(Trem)))
+            : l.strike * Math.exp(-0.05 * Trem) * normalCDF(-(Math.log(price / l.strike) + (0.05 - 0.5 * sigma * sigma) * Trem) / (sigma * Math.sqrt(Trem))) - price * normalCDF(-(Math.log(price / l.strike) + (0.05 + 0.5 * sigma * sigma) * Trem) / (sigma * Math.sqrt(Trem)));
+          pnl += (bsVal - l.price) * l.qty * 100;
+        }
+      });
+    } else {
+      strategy.legs.forEach(l => {
+        const mult = (l.action === 'Buy' || l.action === 'Hold') ? 1 : -1;
+        if (l.type === 'Call') { pnl += (Math.max(0, price - l.strike) - l.price) * mult * l.qty * 100; }
+        else if (l.type === 'Put') { pnl += (Math.max(0, l.strike - price) - l.price) * mult * l.qty * 100; }
+        else if (l.type === 'Stock') { pnl += (price - l.price) * mult * l.qty; }
+      });
+    }
+    points.push({ price, pnl });
+  }
+
+  const pnls = points.map(p => p.pnl);
+  let minPnl = Math.min(...pnls), maxPnl = Math.max(...pnls);
+  if (maxPnl > 50000) maxPnl = Math.max(strategy.maxLoss * 3, 5000);
+  if (minPnl < -50000) minPnl = -Math.max(strategy.maxLoss * 3, 5000);
+  const pnlRange = maxPnl - minPnl || 1;
+
+  const pad = { top: 20, right: 15, bottom: 30, left: 55 };
+  const plotW = W - pad.left - pad.right, plotH = H - pad.top - pad.bottom;
+  const toX = (p) => pad.left + ((p - priceLo) / (priceHi - priceLo)) * plotW;
+  const toY = (p) => pad.top + plotH - ((Math.max(minPnl, Math.min(maxPnl, p)) - minPnl) / pnlRange) * plotH;
+
+  ctx.fillStyle = '#111118';
+  ctx.fillRect(0, 0, W, H);
+
+  // Zero line
+  if (minPnl <= 0 && maxPnl >= 0) {
+    const y0 = toY(0);
+    ctx.strokeStyle = '#ffffff20'; ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(pad.left, y0); ctx.lineTo(W - pad.right, y0); ctx.stroke();
+    ctx.setLineDash([]); ctx.fillStyle = '#666'; ctx.font = '9px Inter, sans-serif'; ctx.textAlign = 'right';
+    ctx.fillText('$0', pad.left - 5, y0 + 3);
+  }
+
+  const zeroY = toY(0);
+  // Profit fill
+  ctx.beginPath();
+  let inProfit = false;
+  points.forEach(p => {
+    const x = toX(p.price), y = toY(p.pnl);
+    if (p.pnl >= 0) { if (!inProfit) { ctx.moveTo(x, zeroY); inProfit = true; } ctx.lineTo(x, y); }
+    else { if (inProfit) { ctx.lineTo(x, zeroY); inProfit = false; } }
+  });
+  if (inProfit) ctx.lineTo(toX(points[points.length - 1].price), zeroY);
+  ctx.closePath(); ctx.fillStyle = '#4caf5015'; ctx.fill();
+
+  // Loss fill
+  ctx.beginPath();
+  let inLoss = false;
+  points.forEach(p => {
+    const x = toX(p.price), y = toY(p.pnl);
+    if (p.pnl < 0) { if (!inLoss) { ctx.moveTo(x, zeroY); inLoss = true; } ctx.lineTo(x, y); }
+    else { if (inLoss) { ctx.lineTo(x, zeroY); inLoss = false; } }
+  });
+  if (inLoss) ctx.lineTo(toX(points[points.length - 1].price), zeroY);
+  ctx.closePath(); ctx.fillStyle = '#f4433615'; ctx.fill();
+
+  // PnL line
+  ctx.beginPath();
+  points.forEach((p, i) => { const x = toX(p.price), y = toY(p.pnl); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); });
+  ctx.strokeStyle = '#00d4aa'; ctx.lineWidth = 2; ctx.stroke();
+
+  // Breakeven dots
+  ctx.fillStyle = '#FF9800';
+  strategy.breakeven.forEach(b => {
+    if (b >= priceLo && b <= priceHi) {
+      ctx.beginPath(); ctx.arc(toX(b), toY(0), 4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#FF9800'; ctx.font = '9px Inter, sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('$' + b.toFixed(1), toX(b), toY(0) + 14);
+    }
+  });
+
+  // Axis labels
+  ctx.fillStyle = '#666'; ctx.font = '9px Inter, sans-serif';
+  ctx.textAlign = 'center'; ctx.fillText('Stock Price at Expiration', W / 2, H - 5);
+  [priceLo, (priceLo + priceHi) / 2, priceHi].forEach(p => { ctx.textAlign = 'center'; ctx.fillText('$' + p.toFixed(0), toX(p), H - 15); });
+  ctx.textAlign = 'right';
+  ctx.fillText('$' + maxPnl.toFixed(0), pad.left - 5, pad.top + 10);
+  ctx.fillText('$' + minPnl.toFixed(0), pad.left - 5, H - pad.bottom - 2);
+}
+
+// ===== SAVED STRATEGIES =====
+async function loadSavedStrategies() {
+  if (!currentUser?.sub || currentUser.isGuest) return;
+  try {
+    const res = await fetch(`/api/options-data?action=saved&userId=${encodeURIComponent(currentUser.sub)}`);
+    const data = await res.json();
+    userSavedStrategies = data.strategies || [];
+  } catch (e) { userSavedStrategies = []; }
+}
+
+async function saveStrategy(strategy) {
+  if (!currentUser?.sub || currentUser.isGuest) { openSignIn(); return; }
+  if (!userSubscription.active) { showUpgradeModal(); return; }
+  if (!lastResult) return;
+  try {
+    const res = await fetch('/api/options-data?action=save', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: currentUser.sub, symbol: lastResult.symbol, strategy_name: strategy.name,
+        legs: strategy.legs,
+        entry_price: strategy.legs.reduce((sum, l) => { const mult = (l.action === 'Buy' || l.action === 'Hold') ? -1 : 1; return sum + l.price * mult * l.qty * (l.type === 'Stock' ? 1 : 100); }, 0),
+        score: strategy.score, iv_at_entry: strategy.iv || lastResult.avgIV,
+      })
+    });
+    const data = await res.json();
+    if (data.saved) {
+      await loadSavedStrategies();
+      renderSavedSection();
+      const btn = document.getElementById('save-btn');
+      if (btn) { btn.textContent = 'Saved'; btn.disabled = true; btn.style.background = 'var(--bg3)'; btn.style.color = 'var(--dim)'; }
+    }
+  } catch (e) { }
+}
+
+async function unsaveStrategy(id) {
+  if (!currentUser?.sub) return;
+  try {
+    await fetch(`/api/options-data?action=unsave&id=${id}&userId=${encodeURIComponent(currentUser.sub)}`, { method: 'DELETE' });
+    await loadSavedStrategies();
+    renderSavedSection();
+  } catch (e) { }
+}
+
+function renderSavedSection() {
+  const container = document.getElementById('saved-section');
+  if (!container) return;
+  if (!userSavedStrategies.length) { container.innerHTML = ''; return; }
+  let html = '<div class="saved-title">Saved Strategies</div><div class="strat-cards">';
+  userSavedStrategies.forEach(s => {
+    const legsText = s.legs.filter(l => l.type !== 'Stock').map(l => `${l.action} ${l.qty > 1 ? l.qty + 'x ' : ''}${l.strike} ${l.type}`).join(' | ');
+    html += `<div class="strat-card" style="border-left:2px solid var(--accent)">
+      <div class="card-head">
+        <div style="display:flex;align-items:center"><span class="card-name">${s.symbol} \u2014 ${s.strategy_name}</span></div>
+        <button onclick="event.stopPropagation();unsaveStrategy(${s.id})" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:12px" title="Remove">&#10005;</button>
+      </div>
+      <div class="card-legs">${legsText}</div>
+      <div style="display:flex;gap:12px;font-size:10px;color:var(--dim);margin-top:4px">
+        <span>Score: ${s.score || '\u2014'}</span>
+        <span>IV at entry: ${s.iv_at_entry ? (s.iv_at_entry * 100).toFixed(1) + '%' : '\u2014'}</span>
+        <span>${new Date(s.created_at).toLocaleDateString()}</span>
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+// ===== SEARCH & NAVIGATION =====
+async function searchTicker(symbol) {
+  symbol = symbol.toUpperCase().trim();
+  if (!symbol) return;
+
+  document.getElementById('landing').style.display = 'none';
+  document.getElementById('results').classList.add('active');
+
+  const stratPanel = document.getElementById('strat-panel');
+  stratPanel.innerHTML = '<div class="loading-state"><div class="spinner"></div>Analyzing options for ' + symbol + '...</div>';
+  document.getElementById('side-panel').innerHTML = '';
+  document.getElementById('results-symbol').textContent = symbol;
+  document.getElementById('results-price').textContent = '';
+
+  try {
+    const result = await analyzeOptionsStrategies(symbol);
+    renderResults(result);
+  } catch(e) {
+    stratPanel.innerHTML = `<div class="loading-state">Options data unavailable for ${symbol}.<br><span style="font-size:12px;color:var(--dimmer)">${e.message}</span></div>`;
+  }
+}
+
+function showLanding() {
+  document.getElementById('landing').style.display = '';
+  document.getElementById('results').classList.remove('active');
+}
+
+// Search handlers
+document.getElementById('search-landing').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') searchTicker(e.target.value);
+});
+document.getElementById('search-results').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { searchTicker(e.target.value); e.target.value = ''; }
+});
+
+// ===== AUTH =====
+function initAuth() {
+  const saved = localStorage.getItem('optionsranker_user');
+  if (saved) {
+    try {
+      currentUser = JSON.parse(saved);
+      renderUserUI();
+      syncUser();
+      checkSubscription();
+    } catch(e) { localStorage.removeItem('optionsranker_user'); }
+  }
+
+  // Check for post-checkout redirect
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('session_id')) {
+    // Refresh subscription after Stripe checkout
+    setTimeout(() => {
+      checkSubscription();
+      window.history.replaceState({}, '', window.location.pathname);
+    }, 1000);
+  }
+}
+
+function openSignIn() {
+  document.getElementById('signin-modal').classList.add('active');
+  try {
+    google.accounts.id.initialize({
+      client_id: 'GOOGLE_CLIENT_ID',
+      callback: handleCredentialResponse,
+      auto_select: false,
+    });
+    google.accounts.id.renderButton(
+      document.getElementById('google-signin-container'),
+      { theme: 'filled_black', size: 'large', width: 340, text: 'continue_with' }
+    );
+  } catch(e) { console.log('Google auth not configured'); }
+}
+
+function closeSignIn() {
+  document.getElementById('signin-modal').classList.remove('active');
+}
+
+function handleCredentialResponse(response) {
+  try {
+    const payload = JSON.parse(atob(response.credential.split('.')[1]));
+    currentUser = { name: payload.name, email: payload.email, picture: payload.picture, sub: payload.sub };
+    localStorage.setItem('optionsranker_user', JSON.stringify(currentUser));
+    closeSignIn();
+    renderUserUI();
+    syncUser();
+  } catch(e) { console.error('Failed to parse Google credential:', e); }
+}
+
+function signInAsGuest() {
+  currentUser = { name: 'Guest', email: '', picture: '', sub: 'guest_' + Date.now(), isGuest: true };
+  localStorage.setItem('optionsranker_user', JSON.stringify(currentUser));
+  closeSignIn();
+  renderUserUI();
+}
+
+function handleSignOut() {
+  currentUser = null;
+  userSubscription = { tier: 'free', active: false };
+  localStorage.removeItem('optionsranker_user');
+  renderUserUI();
+  // Re-render cards to apply gating
+  if (lastResult) {
+    document.getElementById('strat-cards').innerHTML = renderStrategyCards(getFilteredStrategies());
+  }
+}
+
+function renderUserUI() {
+  const area = document.getElementById('auth-area');
+  if (currentUser) {
+    const initial = currentUser.name?.[0]?.toUpperCase() || '?';
+    const pic = currentUser.picture
+      ? `<img class="user-avatar" src="${currentUser.picture}" referrerpolicy="no-referrer">`
+      : `<div class="user-avatar" style="background:var(--accent);display:flex;align-items:center;justify-content:center;color:#000;font-weight:700;font-size:12px">${initial}</div>`;
+    const displayName = currentUser.isGuest ? 'Guest' : (currentUser.name?.split(' ')[0] || currentUser.name);
+    let html = `<div class="user-info">${pic}<span class="user-name">${displayName}</span>`;
+    if (userSubscription.active) html += '<span class="user-badge">PRO</span>';
+    html += '</div>';
+    if (userSubscription.active) {
+      html += '<button class="header-btn" onclick="openBillingPortal()">Manage</button>';
+    } else {
+      html += '<button class="header-btn primary" onclick="showUpgradeModal()">Upgrade $10/mo</button>';
+    }
+    html += '<button class="header-btn" onclick="handleSignOut()">Sign Out</button>';
+    area.innerHTML = html;
+  } else {
+    area.innerHTML = '<button class="header-btn" onclick="openSignIn()">Sign In</button><button class="header-btn primary" onclick="showUpgradeModal()">Subscribe $10/mo</button>';
+  }
+}
+
+async function syncUser() {
+  if (!currentUser?.sub || currentUser.isGuest) return;
+  try {
+    const res = await fetch('/api/user-data', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: currentUser.sub, email: currentUser.email, name: currentUser.name, picture: currentUser.picture }),
+    });
+    const data = await res.json();
+    if (data.subscription) {
+      userSubscription = data.subscription;
+      renderUserUI();
+      if (lastResult) {
+        document.getElementById('strat-cards').innerHTML = renderStrategyCards(getFilteredStrategies());
+      }
+    }
+  } catch(e) { }
+}
+
+async function checkSubscription() {
+  if (!currentUser?.sub || currentUser.isGuest) return;
+  try {
+    const res = await fetch(`/api/subscription?userId=${encodeURIComponent(currentUser.sub)}`);
+    const data = await res.json();
+    userSubscription = { tier: data.tier || 'free', active: data.active || false };
+    renderUserUI();
+    if (lastResult) {
+      document.getElementById('strat-cards').innerHTML = renderStrategyCards(getFilteredStrategies());
+    }
+  } catch(e) { }
+}
+
+// ===== STRIPE / UPGRADE =====
+function showUpgradeModal() {
+  document.getElementById('upgrade-modal').classList.add('active');
+}
+function closeUpgradeModal() {
+  document.getElementById('upgrade-modal').classList.remove('active');
+}
+
+async function startCheckout() {
+  if (!currentUser?.sub || currentUser.isGuest) {
+    closeUpgradeModal();
+    openSignIn();
+    return;
+  }
+  try {
+    const res = await fetch('/api/create-checkout', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: currentUser.sub, email: currentUser.email }),
+    });
+    const data = await res.json();
+    if (data.url) {
+      window.location.href = data.url;
+    }
+  } catch(e) { alert('Checkout failed. Please try again.'); }
+}
+
+async function openBillingPortal() {
+  if (!currentUser?.sub) return;
+  try {
+    const res = await fetch('/api/customer-portal', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: currentUser.sub }),
+    });
+    const data = await res.json();
+    if (data.url) window.location.href = data.url;
+  } catch(e) { alert('Could not open billing portal.'); }
+}
+
+// ===== MARKET PULSE =====
+async function loadMarketPulse() {
+  const container = document.getElementById('mp-content');
+  if (!container) return;
+
+  try {
+    // Fetch SPY (1y daily for 200 MA), VIX (3mo daily), RSP equal-weight (3mo daily) in parallel
+    const [spyResp, vixResp, rspResp] = await Promise.all([
+      fetch('/api/chart/SPY?range=1y&interval=1d').then(r => r.json()),
+      fetch('/api/chart/%5EVIX?range=3mo&interval=1d').then(r => r.json()),
+      fetch('/api/chart/RSP?range=3mo&interval=1d').then(r => r.json()),
+    ]);
+
+    const spyResult = spyResp.chart?.result?.[0];
+    const vixResult = vixResp.chart?.result?.[0];
+    const rspResult = rspResp.chart?.result?.[0];
+
+    if (!spyResult || !vixResult) {
+      container.innerHTML = '<div class="mp-loading">Market data temporarily unavailable.</div>';
+      return;
+    }
+
+    const spyCloses = spyResult.indicators.quote[0].close.filter(v => v != null);
+    const spyPrice = spyCloses[spyCloses.length - 1];
+
+    // 1. SPY vs 200-day MA
+    const ma200 = spyCloses.length >= 200
+      ? spyCloses.slice(-200).reduce((a, b) => a + b, 0) / 200
+      : spyCloses.reduce((a, b) => a + b, 0) / spyCloses.length;
+    const spyAbove200 = spyPrice > ma200;
+    const spyPctFrom200 = ((spyPrice - ma200) / ma200 * 100);
+
+    // 2. VIX analysis — current level + is it falling from a recent spike?
+    const vixCloses = vixResult.indicators.quote[0].close.filter(v => v != null);
+    const vixCurrent = vixCloses[vixCloses.length - 1];
+    const vixRecent20 = vixCloses.slice(-20);
+    const vix20High = Math.max(...vixRecent20);
+    const vix5Avg = vixCloses.slice(-5).reduce((a, b) => a + b, 0) / Math.min(5, vixCloses.length);
+    const vixFalling = vixCurrent < vix20High * 0.85 && vixCurrent < vix5Avg * 1.02;
+    const vixSpike = vix20High > 25;
+    const vixFallingAfterSpike = vixSpike && vixFalling;
+
+    // 3. Breadth — RSP (equal-weight S&P 500) vs SPY performance
+    // If RSP outperforms SPY over last 20 days, broad participation is improving
+    let breadthImproving = false;
+    let rspVsSpy = 0;
+    if (rspResult) {
+      const rspCloses = rspResult.indicators.quote[0].close.filter(v => v != null);
+      if (rspCloses.length >= 20 && spyCloses.length >= 20) {
+        const rspNow = rspCloses[rspCloses.length - 1];
+        const rsp20Ago = rspCloses[rspCloses.length - 20];
+        const spy20Ago = spyCloses[spyCloses.length - 20];
+        const rspReturn = (rspNow - rsp20Ago) / rsp20Ago;
+        const spyReturn = (spyPrice - spy20Ago) / spy20Ago;
+        rspVsSpy = (rspReturn - spyReturn) * 100;
+        breadthImproving = rspReturn > spyReturn;
+      }
+    }
+
+    // Compute overall score (0-3 signals bullish)
+    const bullishCount = (spyAbove200 ? 1 : 0) + (vixFallingAfterSpike || (!vixSpike && vixCurrent < 20) ? 1 : 0) + (breadthImproving ? 1 : 0);
+    const scoreColor = bullishCount >= 3 ? 'var(--green)' : bullishCount >= 2 ? 'var(--orange)' : 'var(--red)';
+    const scoreFillColor = bullishCount >= 3 ? '#4caf50' : bullishCount >= 2 ? '#FF9800' : '#f44336';
+    const overallLabel = bullishCount >= 3 ? 'Conditions favor re-entry — all 3 signals aligned.'
+      : bullishCount === 2 ? 'Market improving — 2 of 3 signals aligned. Watch for confirmation.'
+      : bullishCount === 1 ? 'Market uncertain — only 1 signal bullish. Consider staying cautious.'
+      : 'Risk-off environment — no bullish signals. Wait for improvement.';
+
+    // Signal 1: SPY vs 200 MA
+    const s1Class = spyAbove200 ? 'bullish' : 'bearish';
+    const s1Icon = spyAbove200 ? '&#9650;' : '&#9660;';
+    const s1Tag = spyAbove200 ? '<span class="mp-tag green">Above</span>' : '<span class="mp-tag red">Below</span>';
+    const s1Detail = `S&P 500 at <span class="mp-value">$${spyPrice.toFixed(2)}</span> — ${Math.abs(spyPctFrom200).toFixed(1)}% ${spyAbove200 ? 'above' : 'below'} the 200-day MA ($${ma200.toFixed(2)}) ${s1Tag}`;
+
+    // Signal 2: Market breadth
+    const s2Class = breadthImproving ? 'bullish' : (rspVsSpy < -0.5 ? 'bearish' : 'neutral');
+    const s2Icon = breadthImproving ? '&#9632;&#9632;&#9632;' : '&#9632;';
+    const s2Tag = breadthImproving ? '<span class="mp-tag green">Broadening</span>' : (rspVsSpy < -0.5 ? '<span class="mp-tag red">Narrowing</span>' : '<span class="mp-tag yellow">Mixed</span>');
+    const s2Detail = `Equal-weight S&P (RSP) ${rspVsSpy >= 0 ? 'outperforming' : 'underperforming'} SPY by <span class="mp-value">${Math.abs(rspVsSpy).toFixed(2)}%</span> over 20 days ${s2Tag}`;
+
+    // Signal 3: VIX
+    const s3Bullish = vixFallingAfterSpike || (!vixSpike && vixCurrent < 20);
+    const s3Class = s3Bullish ? 'bullish' : (vixCurrent > 30 ? 'bearish' : 'neutral');
+    const s3Tag = s3Bullish ? '<span class="mp-tag green">Calming</span>' : (vixCurrent > 30 ? '<span class="mp-tag red">Elevated</span>' : '<span class="mp-tag yellow">Watching</span>');
+    let s3Text = `VIX at <span class="mp-value">${vixCurrent.toFixed(1)}</span>`;
+    if (vixSpike) s3Text += ` — 20-day high was ${vix20High.toFixed(1)}`;
+    if (vixFallingAfterSpike) s3Text += ', now falling after spike';
+    else if (vixSpike && !vixFalling) s3Text += ', still elevated';
+    else if (vixCurrent < 15) s3Text += ' — low volatility, complacency zone';
+    else if (vixCurrent < 20) s3Text += ' — normal range';
+    s3Text += ` ${s3Tag}`;
+
+    let html = '';
+
+    // Score bar
+    html += `<div class="mp-score-row">
+      <span class="mp-score-label">Signal Strength</span>
+      <div class="mp-score-bar"><div class="mp-score-fill" style="width:${(bullishCount / 3 * 100)}%;background:${scoreFillColor}"></div></div>
+      <span class="mp-score-val" style="color:${scoreColor}">${bullishCount}/3</span>
+    </div>`;
+
+    // Signals
+    html += '<div class="mp-signals">';
+    html += `<div class="mp-signal ${s1Class}"><div class="mp-icon">${s1Icon}</div><div class="mp-body"><div class="mp-title">S&P 500 vs 200-Day Moving Average</div><div class="mp-detail">${s1Detail}</div></div></div>`;
+    html += `<div class="mp-signal ${s2Class}"><div class="mp-icon">${s2Icon}</div><div class="mp-body"><div class="mp-title">Broad Market Participation</div><div class="mp-detail">${s2Detail}</div></div></div>`;
+    html += `<div class="mp-signal ${s3Class}"><div class="mp-icon">&#9889;</div><div class="mp-body"><div class="mp-title">VIX Volatility</div><div class="mp-detail">${s3Text}</div></div></div>`;
+    html += '</div>';
+
+    // Summary
+    html += `<div class="mp-summary"><div class="mp-summary-title">What This Means</div><div class="mp-summary-text">${overallLabel}</div></div>`;
+
+    container.innerHTML = html;
+  } catch(e) {
+    container.innerHTML = '<div class="mp-loading">Market data temporarily unavailable.</div>';
+  }
+}
+
+// ===== INIT =====
+initAuth();
+loadMarketPulse();
+</script>
+</body>
+</html>
