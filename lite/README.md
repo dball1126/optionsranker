@@ -30,7 +30,7 @@ Standalone options strategy ranking site. Enter any ticker, get 14 strategies sc
 ## Project Structure
 
 ```
-options-site/
+optionsranker/lite/
 ├── index.html              # Single-page app
 ├── server.js               # Local dev server (port 8789)
 ├── wrangler.toml            # Cloudflare Pages + D1 binding
