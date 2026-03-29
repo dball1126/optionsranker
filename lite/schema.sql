@@ -38,3 +38,29 @@ CREATE TABLE IF NOT EXISTS saved_strategies (
 
 CREATE INDEX IF NOT EXISTS idx_iv_symbol ON iv_history(symbol);
 CREATE INDEX IF NOT EXISTS idx_saved_user ON saved_strategies(user_id);
+
+-- Daily market pulse signal snapshots (one row per day, upserted)
+CREATE TABLE IF NOT EXISTS signal_snapshots (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  date TEXT NOT NULL UNIQUE,
+  spy_above_200 INTEGER NOT NULL,
+  spy_pct_from_200 REAL,
+  breadth_improving INTEGER NOT NULL,
+  rsp_vs_spy REAL,
+  vix_bullish INTEGER NOT NULL,
+  vix_current REAL,
+  vix_20_high REAL,
+  bullish_count INTEGER NOT NULL,
+  notification_sent INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+-- Email notification log (audit trail)
+CREATE TABLE IF NOT EXISTS notification_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL,
+  notification_type TEXT NOT NULL,
+  sent_at TEXT DEFAULT (datetime('now')),
+  status TEXT DEFAULT 'sent'
+);
+CREATE INDEX IF NOT EXISTS idx_notif_user ON notification_log(user_id);

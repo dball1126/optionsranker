@@ -10,6 +10,8 @@ const localIVHistory = {};
 const localSavedStrategies = [];
 const localUsers = {};
 let savedIdCounter = 1;
+const localSignalSnapshots = [];
+const localNotificationLog = [];
 
 const MIME_TYPES = {
   '.html': 'text/html', '.css': 'text/css', '.js': 'application/javascript',
@@ -212,6 +214,111 @@ const server = http.createServer(async (req, res) => {
       if (idx >= 0) localSavedStrategies.splice(idx, 1);
       res.writeHead(200, { ...cors, 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ deleted: true }));
+      return;
+    }
+
+    res.writeHead(400, { ...cors, 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Unknown action' }));
+    return;
+  }
+
+  // Market Pulse signals
+  if (req.url.startsWith('/api/market-pulse')) {
+    const urlObj = new URL(req.url, `http://localhost:${PORT}`);
+    const action = urlObj.searchParams.get('action');
+    let body = null;
+    if (req.method === 'POST') body = await readBody(req);
+
+    if (action === 'report-signals' && body) {
+      const today = new Date().toISOString().slice(0, 10);
+      const existing = localSignalSnapshots.find(s => s.date === today);
+      const snapshot = {
+        date: today,
+        spy_above_200: body.spy_above_200 ? 1 : 0,
+        spy_pct_from_200: body.spy_pct_from_200 || 0,
+        breadth_improving: body.breadth_improving ? 1 : 0,
+        rsp_vs_spy: body.rsp_vs_spy || 0,
+        vix_bullish: body.vix_bullish ? 1 : 0,
+        vix_current: body.vix_current || 0,
+        vix_20_high: body.vix_20_high || 0,
+        bullish_count: body.bullish_count || 0,
+        notification_sent: existing?.notification_sent || 0,
+        created_at: new Date().toISOString(),
+      };
+
+      if (existing) {
+        Object.assign(existing, snapshot);
+      } else {
+        localSignalSnapshots.push(snapshot);
+      }
+
+      let transitioned = false;
+      if (snapshot.bullish_count === 3 && !snapshot.notification_sent) {
+        const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+        const yesterdaySnap = localSignalSnapshots.find(s => s.date === yesterday);
+        if (!yesterdaySnap || yesterdaySnap.bullish_count < 3) {
+          transitioned = true;
+          snapshot.notification_sent = 1;
+          // Simulate email sends in dev
+          Object.values(localUsers).forEach(u => {
+            const prefs = typeof u.preferences === 'string' ? JSON.parse(u.preferences || '{}') : (u.preferences || {});
+            if (prefs.market_pulse_alerts && u.email) {
+              console.log(`[DEV] Would send Market Pulse alert to ${u.email}`);
+              localNotificationLog.push({
+                user_id: u.user_id || u.email,
+                notification_type: 'market_pulse_3_aligned',
+                sent_at: new Date().toISOString(),
+                status: 'simulated',
+              });
+            }
+          });
+        }
+      }
+
+      console.log(`[Market Pulse] ${today}: ${snapshot.bullish_count}/3 signals bullish${transitioned ? ' — TRANSITION DETECTED' : ''}`);
+      res.writeHead(200, { ...cors, 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ saved: true, date: today, transitioned }));
+      return;
+    }
+
+    if (action === 'history') {
+      const limit = Math.min(parseInt(urlObj.searchParams.get('limit') || '30'), 90);
+      const sorted = [...localSignalSnapshots].sort((a, b) => b.date.localeCompare(a.date)).slice(0, limit);
+      res.writeHead(200, { ...cors, 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ history: sorted }));
+      return;
+    }
+
+    if (action === 'preferences' && body) {
+      const userId = body.userId;
+      if (!userId) {
+        res.writeHead(400, { ...cors, 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'userId required' }));
+        return;
+      }
+      if (!localUsers[userId]) localUsers[userId] = {};
+      let prefs = {};
+      try { prefs = typeof localUsers[userId].preferences === 'string' ? JSON.parse(localUsers[userId].preferences) : (localUsers[userId].preferences || {}); } catch { prefs = {}; }
+      prefs.market_pulse_alerts = !!body.market_pulse_alerts;
+      localUsers[userId].preferences = JSON.stringify(prefs);
+      res.writeHead(200, { ...cors, 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ saved: true, preferences: prefs }));
+      return;
+    }
+
+    if (action === 'get-preferences') {
+      const userId = urlObj.searchParams.get('userId');
+      if (!userId) {
+        res.writeHead(400, { ...cors, 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'userId required' }));
+        return;
+      }
+      let prefs = {};
+      if (localUsers[userId]) {
+        try { prefs = typeof localUsers[userId].preferences === 'string' ? JSON.parse(localUsers[userId].preferences) : (localUsers[userId].preferences || {}); } catch { prefs = {}; }
+      }
+      res.writeHead(200, { ...cors, 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ preferences: prefs }));
       return;
     }
 

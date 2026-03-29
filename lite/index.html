@@ -386,6 +386,42 @@ body {
   font-weight: 800;
   min-width: 28px;
 }
+/* Market Pulse alert CTA & bell button */
+.mp-alert-cta {
+  margin-top: 12px;
+  text-align: center;
+  padding: 10px 16px;
+  background: var(--bg3);
+  border-radius: 8px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.mp-alert-prompt { color: var(--dim); }
+.mp-alert-active { color: var(--accent); font-size: 12px; }
+.mp-alert-btn {
+  background: var(--accent);
+  color: #000;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+.mp-alert-btn:hover { opacity: 0.85; }
+.mp-bell-btn {
+  font-size: 16px;
+  padding: 4px 8px;
+  min-width: unset;
+  line-height: 1;
+}
+.mp-bell-btn.active { color: var(--accent); }
+
 @media (max-width: 480px) {
   .market-pulse { padding: 20px 16px; }
 }
@@ -1068,6 +1104,7 @@ const FREE_STRATEGY_LIMIT = 2;
 let lastResult = null;
 let userSavedStrategies = [];
 let rawData = null; // For HV estimation (loaded from chart API)
+let userPreferences = {};
 
 // ===== OPTIONS ENGINE (ported from ChartNova) =====
 let optionsCache = {};
@@ -2052,6 +2089,7 @@ function initAuth() {
       renderUserUI();
       syncUser();
       checkSubscription();
+      loadUserPreferences();
     } catch(e) { localStorage.removeItem('optionsranker_user'); }
   }
 
@@ -2093,6 +2131,7 @@ function handleCredentialResponse(response) {
     closeSignIn();
     renderUserUI();
     syncUser();
+    loadUserPreferences();
   } catch(e) { console.error('Failed to parse Google credential:', e); }
 }
 
@@ -2125,6 +2164,11 @@ function renderUserUI() {
     let html = `<div class="user-info">${pic}<span class="user-name">${displayName}</span>`;
     if (userSubscription.active) html += '<span class="user-badge">PRO</span>';
     html += '</div>';
+    // Bell icon for market pulse alerts (signed-in, non-guest only)
+    if (!currentUser.isGuest) {
+      const bellOn = userPreferences.market_pulse_alerts;
+      html += `<button class="header-btn mp-bell-btn${bellOn ? ' active' : ''}" onclick="toggleMarketPulseAlerts()" title="${bellOn ? 'Market Pulse alerts ON' : 'Market Pulse alerts OFF'}">${bellOn ? '&#128276;' : '&#128277;'}</button>`;
+    }
     if (userSubscription.active) {
       html += '<button class="header-btn" onclick="openBillingPortal()">Manage</button>';
     } else {
@@ -2204,6 +2248,40 @@ async function openBillingPortal() {
     const data = await res.json();
     if (data.url) window.location.href = data.url;
   } catch(e) { alert('Could not open billing portal.'); }
+}
+
+// ===== MARKET PULSE PREFERENCES =====
+async function loadUserPreferences() {
+  if (!currentUser?.sub || currentUser.isGuest) return;
+  try {
+    const res = await fetch(`/api/market-pulse?action=get-preferences&userId=${encodeURIComponent(currentUser.sub)}`);
+    const data = await res.json();
+    userPreferences = data.preferences || {};
+    renderUserUI();
+  } catch(e) { }
+}
+
+async function toggleMarketPulseAlerts() {
+  if (!currentUser?.sub || currentUser.isGuest) { openSignIn(); return; }
+  const newVal = !userPreferences.market_pulse_alerts;
+  try {
+    const res = await fetch('/api/market-pulse?action=preferences', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: currentUser.sub, market_pulse_alerts: newVal }),
+    });
+    const data = await res.json();
+    if (data.preferences) userPreferences = data.preferences;
+    renderUserUI();
+    // Update the CTA in market pulse section if present
+    const cta = document.getElementById('mp-alert-cta');
+    if (cta) {
+      if (userPreferences.market_pulse_alerts) {
+        cta.innerHTML = '<span class="mp-alert-active">&#128276; Alerts enabled — you\'ll be emailed when all 3 align.</span>';
+      } else {
+        cta.innerHTML = '<span class="mp-alert-prompt">Get notified when all 3 signals align</span> <button class="mp-alert-btn" onclick="toggleMarketPulseAlerts()">Enable Alerts</button>';
+      }
+    }
+  } catch(e) { }
 }
 
 // ===== MARKET PULSE =====
@@ -2317,7 +2395,35 @@ async function loadMarketPulse() {
     // Summary
     html += `<div class="mp-summary"><div class="mp-summary-title">What This Means</div><div class="mp-summary-text">${overallLabel}</div></div>`;
 
+    // Opt-in CTA for signed-in, non-guest users
+    if (currentUser && !currentUser.isGuest) {
+      html += '<div id="mp-alert-cta" class="mp-alert-cta">';
+      if (userPreferences.market_pulse_alerts) {
+        html += '<span class="mp-alert-active">&#128276; Alerts enabled — you\'ll be emailed when all 3 align.</span>';
+      } else {
+        html += '<span class="mp-alert-prompt">Get notified when all 3 signals align</span> <button class="mp-alert-btn" onclick="toggleMarketPulseAlerts()">Enable Alerts</button>';
+      }
+      html += '</div>';
+    }
+
     container.innerHTML = html;
+
+    // Report signals to backend (fire-and-forget)
+    try {
+      fetch('/api/market-pulse?action=report-signals', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          spy_above_200: spyAbove200,
+          spy_pct_from_200: spyPctFrom200,
+          breadth_improving: breadthImproving,
+          rsp_vs_spy: rspVsSpy,
+          vix_bullish: s3Bullish,
+          vix_current: vixCurrent,
+          vix_20_high: vix20High,
+          bullish_count: bullishCount,
+        }),
+      }).catch(() => {});
+    } catch(e) { }
   } catch(e) {
     container.innerHTML = '<div class="mp-loading">Market data temporarily unavailable.</div>';
   }
