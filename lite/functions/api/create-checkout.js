@@ -4,7 +4,13 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
+function structuredLog(fn, data) {
+  console.log(JSON.stringify({ ts: new Date().toISOString(), fn, ...data }));
+}
+
 export async function onRequest(context) {
+  const start = Date.now();
+
   if (context.request.method === 'OPTIONS') {
     return new Response(null, { headers: CORS });
   }
@@ -87,5 +93,6 @@ export async function onRequest(context) {
     return Response.json({ error: session.error.message }, { status: 400, headers: CORS });
   }
 
+  structuredLog('create-checkout', { status: 200, userId, durationMs: Date.now() - start });
   return Response.json({ url: session.url }, { headers: CORS });
 }

@@ -4,13 +4,20 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
+function structuredLog(fn, data) {
+  console.log(JSON.stringify({ ts: new Date().toISOString(), fn, ...data }));
+}
+
 export async function onRequest(context) {
+  const start = Date.now();
+
   if (context.request.method === 'OPTIONS') {
     return new Response(null, { headers: CORS });
   }
 
   const db = context.env.DB;
   if (!db) {
+    structuredLog('options-data', { status: 500, error: 'Database not configured' });
     return Response.json({ error: 'Database not configured' }, { status: 500, headers: CORS });
   }
 
@@ -104,5 +111,6 @@ export async function onRequest(context) {
     return Response.json({ deleted: true }, { headers: CORS });
   }
 
+  structuredLog('options-data', { action, status: 400, error: 'Unknown action', durationMs: Date.now() - start });
   return Response.json({ error: 'Unknown action. Use: iv-history, record-iv, saved, save, unsave' }, { status: 400, headers: CORS });
 }

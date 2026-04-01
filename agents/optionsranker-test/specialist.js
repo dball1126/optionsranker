@@ -567,6 +567,123 @@ async function runTests() {
   }
 
   // ─────────────────────────────────────────
+  // 11. RATE LIMITING (Feature #1)
+  // ─────────────────────────────────────────
+  section('rate limiting: chart proxy');
+  try {
+    const src = fs.readFileSync(path.join(LITE_DIR, 'functions/api/chart/[[path]].js'), 'utf-8');
+    assert(src.includes('checkRateLimit'), 'chart has checkRateLimit function');
+    assert(src.includes('429'), 'chart returns 429 on rate limit');
+    assert(src.includes('CF-Connecting-IP'), 'chart reads CF-Connecting-IP header');
+    assert(src.includes('Retry-After'), 'chart includes Retry-After header');
+    assert(src.includes('RATE_LIMIT'), 'chart defines RATE_LIMIT constant');
+  } catch (e) {
+    assert(false, `read failed: ${e.message}`);
+  }
+
+  section('rate limiting: options proxy');
+  try {
+    const src = fs.readFileSync(path.join(LITE_DIR, 'functions/api/options/[[path]].js'), 'utf-8');
+    assert(src.includes('checkRateLimit'), 'options has checkRateLimit function');
+    assert(src.includes('429'), 'options returns 429 on rate limit');
+    assert(src.includes('CF-Connecting-IP'), 'options reads CF-Connecting-IP header');
+    assert(src.includes('Retry-After'), 'options includes Retry-After header');
+  } catch (e) {
+    assert(false, `read failed: ${e.message}`);
+  }
+
+  // ─────────────────────────────────────────
+  // 12. STRUCTURED LOGGING (Feature #2)
+  // ─────────────────────────────────────────
+  section('structured logging: all edge functions');
+  try {
+    const files = [
+      'functions/api/chart/[[path]].js',
+      'functions/api/options/[[path]].js',
+      'functions/api/market-pulse.js',
+      'functions/api/options-data.js',
+      'functions/api/user-data.js',
+      'functions/api/subscription.js',
+      'functions/api/create-checkout.js',
+      'functions/api/customer-portal.js',
+      'functions/api/stripe-webhook.js',
+    ];
+    for (const file of files) {
+      const src = fs.readFileSync(path.join(LITE_DIR, file), 'utf-8');
+      const name = file.split('/').pop();
+      assert(src.includes('structuredLog'), `${name} has structuredLog`);
+    }
+  } catch (e) {
+    assert(false, `read failed: ${e.message}`);
+  }
+
+  section('structured logging: frontend error boundary');
+  try {
+    const html = fs.readFileSync(path.join(LITE_DIR, 'index.html'), 'utf-8');
+    assert(html.includes('window.onerror'), 'window.onerror handler');
+    assert(html.includes('unhandledrejection'), 'unhandledrejection handler');
+  } catch (e) {
+    assert(false, `read failed: ${e.message}`);
+  }
+
+  // ─────────────────────────────────────────
+  // 13. CONFIG ENDPOINT (Feature #3)
+  // ─────────────────────────────────────────
+  section('config endpoint: edge function');
+  try {
+    const src = fs.readFileSync(path.join(LITE_DIR, 'functions/api/config.js'), 'utf-8');
+    assert(src.includes('export async function onRequest'), 'config.js exports onRequest');
+    assert(src.includes('googleClientId'), 'config.js returns googleClientId');
+    assert(src.includes('GOOGLE_CLIENT_ID'), 'config.js reads GOOGLE_CLIENT_ID env var');
+  } catch (e) {
+    assert(false, `read failed: ${e.message}`);
+  }
+
+  section('config endpoint: API test');
+  try {
+    const res = await fetchJSON(`${BASE}/api/config`);
+    assert(res.status === 200, '/api/config returns 200');
+    assert('googleClientId' in (res.data || {}), '/api/config returns googleClientId field');
+  } catch (e) {
+    assert(false, `/api/config failed: ${e.message}`);
+  }
+
+  section('config endpoint: HTML integration');
+  try {
+    const html = fs.readFileSync(path.join(LITE_DIR, 'index.html'), 'utf-8');
+    assert(html.includes('appConfig'), 'appConfig state variable');
+    assert(html.includes('loadAppConfig'), 'loadAppConfig function');
+    assert(html.includes('/api/config'), 'fetches /api/config');
+    assert(html.includes('appConfig.googleClientId'), 'uses appConfig.googleClientId');
+    assert(!html.includes("client_id: 'GOOGLE_CLIENT_ID'"), 'hardcoded GOOGLE_CLIENT_ID placeholder removed');
+  } catch (e) {
+    assert(false, `read failed: ${e.message}`);
+  }
+
+  section('config endpoint: server.js local dev');
+  try {
+    const src = fs.readFileSync(path.join(LITE_DIR, 'server.js'), 'utf-8');
+    assert(src.includes('/api/config'), 'server.js has /api/config route');
+    assert(src.includes('googleClientId'), 'server.js returns googleClientId');
+  } catch (e) {
+    assert(false, `read failed: ${e.message}`);
+  }
+
+  // ─────────────────────────────────────────
+  // 14. DYNAMIC EMAIL DOMAIN (Feature #5)
+  // ─────────────────────────────────────────
+  section('dynamic email: market-pulse.js');
+  try {
+    const src = fs.readFileSync(path.join(LITE_DIR, 'functions/api/market-pulse.js'), 'utf-8');
+    assert(src.includes('FROM_EMAIL'), 'reads FROM_EMAIL env var');
+    assert(src.includes('siteOrigin'), 'uses dynamic siteOrigin for links');
+    assert(!src.includes("'OptionsRanker <alerts@optionsranker.com>'"), 'hardcoded from email removed');
+    assert(!src.includes('href="https://optionsranker.com"'), 'hardcoded URL removed');
+  } catch (e) {
+    assert(false, `read failed: ${e.message}`);
+  }
+
+  // ─────────────────────────────────────────
   // SUMMARY
   // ─────────────────────────────────────────
   console.log('\n' + '─'.repeat(50));

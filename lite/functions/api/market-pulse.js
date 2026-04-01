@@ -4,13 +4,20 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
+function structuredLog(fn, data) {
+  console.log(JSON.stringify({ ts: new Date().toISOString(), fn, ...data }));
+}
+
 export async function onRequest(context) {
+  const start = Date.now();
+
   if (context.request.method === 'OPTIONS') {
     return new Response(null, { headers: CORS });
   }
 
   const db = context.env.DB;
   if (!db) {
+    structuredLog('market-pulse', { status: 500, error: 'Database not configured' });
     return Response.json({ error: 'Database not configured' }, { status: 500, headers: CORS });
   }
 
@@ -83,6 +90,9 @@ export async function onRequest(context) {
           let emailsSent = 0;
 
           if (recipients.length > 0 && context.env.RESEND_API_KEY) {
+            const fromEmail = context.env.FROM_EMAIL || 'alerts@optionsranker.com';
+            const siteOrigin = new URL(context.request.url).origin;
+
             for (const user of recipients) {
               try {
                 const emailResp = await fetch('https://api.resend.com/emails', {
@@ -92,7 +102,7 @@ export async function onRequest(context) {
                     'Content-Type': 'application/json',
                   },
                   body: JSON.stringify({
-                    from: 'OptionsRanker <alerts@optionsranker.com>',
+                    from: `OptionsRanker <${fromEmail}>`,
                     to: [user.email],
                     subject: 'All 3 Market Pulse Signals Just Aligned',
                     html: `<div style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;padding:24px">
@@ -104,7 +114,7 @@ export async function onRequest(context) {
                         <li><strong>VIX</strong> is calming after recent volatility</li>
                       </ul>
                       <p style="color:#888">This is a market conditions update, not financial advice. Conditions can change rapidly.</p>
-                      <p><a href="https://optionsranker.com" style="color:#00d4aa">Open OptionsRanker</a></p>
+                      <p><a href="${siteOrigin}" style="color:#00d4aa">Open OptionsRanker</a></p>
                     </div>`,
                   }),
                 });
@@ -135,6 +145,7 @@ export async function onRequest(context) {
       }
     }
 
+    structuredLog('market-pulse', { action: 'report-signals', status: 200, bullish_count, transitioned, durationMs: Date.now() - start });
     return Response.json({ saved: true, date: today, transitioned }, { headers: CORS });
   }
 
@@ -145,6 +156,7 @@ export async function onRequest(context) {
       'SELECT date, spy_above_200, spy_pct_from_200, breadth_improving, rsp_vs_spy, vix_bullish, vix_current, bullish_count FROM signal_snapshots ORDER BY date DESC LIMIT ?'
     ).bind(limit).all();
 
+    structuredLog('market-pulse', { action: 'history', status: 200, count: (rows.results || []).length, durationMs: Date.now() - start });
     return Response.json({ history: rows.results || [] }, { headers: CORS });
   }
 
@@ -170,6 +182,7 @@ export async function onRequest(context) {
       'UPDATE users SET preferences = ?, updated_at = datetime(\'now\') WHERE user_id = ?'
     ).bind(JSON.stringify(prefs), userId).run();
 
+    structuredLog('market-pulse', { action: 'preferences', status: 200, userId, durationMs: Date.now() - start });
     return Response.json({ saved: true, preferences: prefs }, { headers: CORS });
   }
 
@@ -184,8 +197,10 @@ export async function onRequest(context) {
     let prefs = {};
     try { prefs = JSON.parse(user?.preferences || '{}'); } catch { prefs = {}; }
 
+    structuredLog('market-pulse', { action: 'get-preferences', status: 200, userId, durationMs: Date.now() - start });
     return Response.json({ preferences: prefs }, { headers: CORS });
   }
 
+  structuredLog('market-pulse', { action, status: 400, error: 'Unknown action', durationMs: Date.now() - start });
   return Response.json({ error: 'Unknown action. Use: report-signals, history, preferences, get-preferences' }, { status: 400, headers: CORS });
 }

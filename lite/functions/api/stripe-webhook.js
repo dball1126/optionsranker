@@ -1,4 +1,10 @@
+function structuredLog(fn, data) {
+  console.log(JSON.stringify({ ts: new Date().toISOString(), fn, ...data }));
+}
+
 export async function onRequest(context) {
+  const start = Date.now();
+
   if (context.request.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 });
   }

@@ -4,7 +4,13 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
+function structuredLog(fn, data) {
+  console.log(JSON.stringify({ ts: new Date().toISOString(), fn, ...data }));
+}
+
 export async function onRequest(context) {
+  const start = Date.now();
+
   if (context.request.method === 'OPTIONS') {
     return new Response(null, { headers: CORS });
   }
@@ -32,6 +38,7 @@ export async function onRequest(context) {
   const active = row.subscription_status === 'active' ||
     (row.subscription_status === 'canceled' && row.subscription_expires_at && row.subscription_expires_at > now);
 
+  structuredLog('subscription', { status: 200, userId, tier: active ? 'pro' : 'free', durationMs: Date.now() - start });
   return Response.json({
     tier: active ? 'pro' : 'free',
     active,

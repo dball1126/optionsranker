@@ -1097,6 +1097,14 @@ body {
 </div>
 
 <script>
+// ===== ERROR BOUNDARY =====
+window.onerror = function(msg, src, line, col, err) {
+  console.log(JSON.stringify({ ts: new Date().toISOString(), fn: 'client', type: 'error', msg, src, line, col, stack: err?.stack }));
+};
+window.addEventListener('unhandledrejection', function(e) {
+  console.log(JSON.stringify({ ts: new Date().toISOString(), fn: 'client', type: 'unhandledrejection', msg: e.reason?.message || String(e.reason) }));
+});
+
 // ===== STATE =====
 let currentUser = null;
 let userSubscription = { tier: 'free', active: false };
@@ -1105,6 +1113,7 @@ let lastResult = null;
 let userSavedStrategies = [];
 let rawData = null; // For HV estimation (loaded from chart API)
 let userPreferences = {};
+let appConfig = {};
 
 // ===== OPTIONS ENGINE (ported from ChartNova) =====
 let optionsCache = {};
@@ -2107,8 +2116,9 @@ function initAuth() {
 function openSignIn() {
   document.getElementById('signin-modal').classList.add('active');
   try {
+    if (!appConfig.googleClientId) { console.log('Google auth not configured — no client ID'); return; }
     google.accounts.id.initialize({
-      client_id: 'GOOGLE_CLIENT_ID',
+      client_id: appConfig.googleClientId,
       callback: handleCredentialResponse,
       auto_select: false,
     });
@@ -2429,7 +2439,17 @@ async function loadMarketPulse() {
   }
 }
 
+// ===== CONFIG =====
+async function loadAppConfig() {
+  try {
+    const res = await fetch('/api/config');
+    const data = await res.json();
+    appConfig = data || {};
+  } catch(e) { }
+}
+
 // ===== INIT =====
+loadAppConfig();
 initAuth();
 loadMarketPulse();
 </script>

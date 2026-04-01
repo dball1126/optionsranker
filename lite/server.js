@@ -87,6 +87,13 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'OPTIONS') { res.writeHead(204, cors); res.end(); return; }
 
+  // Config endpoint
+  if (req.url.startsWith('/api/config')) {
+    res.writeHead(200, { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=300' });
+    res.end(JSON.stringify({ googleClientId: process.env.GOOGLE_CLIENT_ID || null }));
+    return;
+  }
+
   // Chart proxy
   if (req.url.startsWith('/api/chart/')) {
     const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/${req.url.replace('/api/', '')}`;
