@@ -670,6 +670,67 @@ async function runTests() {
   }
 
   // ─────────────────────────────────────────
+  // 15. WRANGLER.TOML CONFIG (Update #1)
+  // ─────────────────────────────────────────
+  section('wrangler.toml: compatibility_date');
+  try {
+    const toml = fs.readFileSync(path.join(LITE_DIR, 'wrangler.toml'), 'utf-8');
+    assert(toml.includes('compatibility_date = "2025-01-01"'), 'compatibility_date is 2025-01-01');
+    assert(toml.includes('[vars]') || toml.includes('# [vars]'), '[vars] section present (active or commented)');
+    assert(toml.includes('STRIPE_SECRET_KEY'), 'documents STRIPE_SECRET_KEY secret');
+    assert(toml.includes('STRIPE_PRICE_ID'), 'documents STRIPE_PRICE_ID secret');
+    assert(toml.includes('STRIPE_WEBHOOK_SECRET'), 'documents STRIPE_WEBHOOK_SECRET secret');
+    assert(toml.includes('GOOGLE_CLIENT_ID'), 'documents GOOGLE_CLIENT_ID secret');
+    assert(toml.includes('RESEND_API_KEY'), 'documents RESEND_API_KEY secret');
+    assert(toml.includes('FROM_EMAIL'), 'documents FROM_EMAIL secret');
+  } catch (e) {
+    assert(false, `read failed: ${e.message}`);
+  }
+
+  // ─────────────────────────────────────────
+  // 16. STRIPE HARDENING (Update #2)
+  // ─────────────────────────────────────────
+  section('stripe hardening: create-checkout.js timeouts & validation');
+  try {
+    const src = fs.readFileSync(path.join(LITE_DIR, 'functions/api/create-checkout.js'), 'utf-8');
+    assert(src.includes('AbortSignal.timeout'), 'create-checkout has request timeout');
+    assert(src.includes('userId.length > 256'), 'create-checkout validates userId length');
+    assert(src.includes('email.length > 320'), 'create-checkout validates email length');
+    assert(src.includes('@[^\\s@]+\\.[^\\s@]+'), 'create-checkout validates email format');
+  } catch (e) {
+    assert(false, `read failed: ${e.message}`);
+  }
+
+  section('stripe hardening: customer-portal.js timeouts & validation');
+  try {
+    const src = fs.readFileSync(path.join(LITE_DIR, 'functions/api/customer-portal.js'), 'utf-8');
+    assert(src.includes('AbortSignal.timeout'), 'customer-portal has request timeout');
+    assert(src.includes('userId.length > 256'), 'customer-portal validates userId length');
+  } catch (e) {
+    assert(false, `read failed: ${e.message}`);
+  }
+
+  section('stripe hardening: user-data.js input sanitization');
+  try {
+    const src = fs.readFileSync(path.join(LITE_DIR, 'functions/api/user-data.js'), 'utf-8');
+    assert(src.includes('userId.length > 256'), 'user-data validates userId length');
+    assert(src.includes('email.length > 320'), 'user-data validates email length');
+    assert(src.includes('@[^\\s@]+\\.[^\\s@]+'), 'user-data validates email format');
+  } catch (e) {
+    assert(false, `read failed: ${e.message}`);
+  }
+
+  section('stripe hardening: webhook replay protection');
+  try {
+    const src = fs.readFileSync(path.join(LITE_DIR, 'functions/api/stripe-webhook.js'), 'utf-8');
+    assert(src.includes('Math.abs(now - parseInt(timestamp)) > 300'), 'webhook has 5-min timestamp tolerance');
+    assert(src.includes('HMAC'), 'webhook uses HMAC-SHA256 verification');
+    assert(src.includes("structuredLog('stripe-webhook'"), 'webhook has structured logging');
+  } catch (e) {
+    assert(false, `read failed: ${e.message}`);
+  }
+
+  // ─────────────────────────────────────────
   // 14. DYNAMIC EMAIL DOMAIN (Feature #5)
   // ─────────────────────────────────────────
   section('dynamic email: market-pulse.js');

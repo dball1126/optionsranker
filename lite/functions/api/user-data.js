@@ -30,6 +30,12 @@ export async function onRequest(context) {
     if (!userId) {
       return Response.json({ error: 'userId required' }, { status: 400, headers: CORS });
     }
+    if (typeof userId !== 'string' || userId.length > 256) {
+      return Response.json({ error: 'Invalid userId' }, { status: 400, headers: CORS });
+    }
+    if (email && (typeof email !== 'string' || email.length > 320 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
+      return Response.json({ error: 'Invalid email' }, { status: 400, headers: CORS });
+    }
 
     await db.prepare(`
       INSERT INTO users (user_id, email, name, picture)

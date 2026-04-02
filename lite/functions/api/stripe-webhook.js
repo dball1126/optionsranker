@@ -25,6 +25,7 @@ export async function onRequest(context) {
   // Verify HMAC-SHA256 signature
   const verified = await verifyStripeSignature(body, sig, STRIPE_WEBHOOK_SECRET);
   if (!verified) {
+    structuredLog('stripe-webhook', { status: 400, error: 'Invalid or expired signature' });
     return new Response('Invalid signature', { status: 400 });
   }
 
@@ -103,6 +104,7 @@ export async function onRequest(context) {
     }
   }
 
+  structuredLog('stripe-webhook', { status: 200, eventType: event.type, durationMs: Date.now() - start });
   return new Response('ok', { status: 200 });
 }
 

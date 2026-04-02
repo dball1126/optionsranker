@@ -33,6 +33,9 @@ export async function onRequest(context) {
   if (!userId) {
     return Response.json({ error: 'userId required' }, { status: 400, headers: CORS });
   }
+  if (typeof userId !== 'string' || userId.length > 256) {
+    return Response.json({ error: 'Invalid userId' }, { status: 400, headers: CORS });
+  }
 
   const db = context.env.DB;
   if (!db) {
@@ -46,12 +49,14 @@ export async function onRequest(context) {
 
   const origin = new URL(context.request.url).origin;
 
+  const abort = AbortSignal.timeout(10000);
   const portalResp = await fetch('https://api.stripe.com/v1/billing_portal/sessions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${STRIPE_SECRET_KEY}`,
       'Content-Type': 'application/x-www-form-urlencoded',
     },
+    signal: abort,
     body: new URLSearchParams({
       customer: row.stripe_customer_id,
       return_url: origin,

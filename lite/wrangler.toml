@@ -1,8 +1,21 @@
 name = "options-ranker"
-compatibility_date = "2024-01-01"
+compatibility_date = "2025-01-01"
 pages_build_output_dir = "./"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "options-ranker-db"
 database_id = "PLACEHOLDER"
+
+# [vars]
+# Non-secret config values go here. Example:
+# SITE_NAME = "OptionsRanker"
+# FROM_EMAIL = "OptionsRanker <alerts@optionsranker.com>"
+
+# ─── Required Secrets (set via Cloudflare dashboard or `wrangler secret put`) ───
+# STRIPE_SECRET_KEY        — Stripe API secret key
+# STRIPE_PRICE_ID          — Stripe subscription price ID
+# STRIPE_WEBHOOK_SECRET    — Stripe webhook signing secret
+# GOOGLE_CLIENT_ID         — Google OAuth client ID
+# RESEND_API_KEY           — Resend email API key
+# FROM_EMAIL               — Sender address for alert emails

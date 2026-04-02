@@ -34,6 +34,13 @@ export async function onRequest(context) {
     return Response.json({ error: 'userId and email required' }, { status: 400, headers: CORS });
   }
 
+  if (typeof userId !== 'string' || userId.length > 256) {
+    return Response.json({ error: 'Invalid userId' }, { status: 400, headers: CORS });
+  }
+  if (typeof email !== 'string' || email.length > 320 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return Response.json({ error: 'Invalid email' }, { status: 400, headers: CORS });
+  }
+
   const db = context.env.DB;
   const origin = new URL(context.request.url).origin;
 
@@ -48,6 +55,7 @@ export async function onRequest(context) {
 
   // Create Stripe customer if needed
   if (!stripeCustomerId) {
+    const custAbort = AbortSignal.timeout(10000);
     const custResp = await fetch('https://api.stripe.com/v1/customers', {
       method: 'POST',
       headers: {
@@ -55,6 +63,7 @@ export async function onRequest(context) {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: new URLSearchParams({ email, 'metadata[user_id]': userId }),
+      signal: custAbort,
     });
     const cust = await custResp.json();
     if (cust.error) {
@@ -72,12 +81,14 @@ export async function onRequest(context) {
   }
 
   // Create Checkout Session
+  const sessionAbort = AbortSignal.timeout(10000);
   const sessionResp = await fetch('https://api.stripe.com/v1/checkout/sessions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${STRIPE_SECRET_KEY}`,
       'Content-Type': 'application/x-www-form-urlencoded',
     },
+    signal: sessionAbort,
     body: new URLSearchParams({
       customer: stripeCustomerId,
       'line_items[0][price]': STRIPE_PRICE_ID,
