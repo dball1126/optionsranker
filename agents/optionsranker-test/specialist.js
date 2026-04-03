@@ -731,6 +731,77 @@ async function runTests() {
   }
 
   // ─────────────────────────────────────────
+  // 17. MARKET PULSE RESILIENCE (Update #3)
+  // ─────────────────────────────────────────
+  section('market pulse resilience: AbortController timeout');
+  try {
+    const html = fs.readFileSync(path.join(LITE_DIR, 'index.html'), 'utf-8');
+    assert(html.includes('AbortController'), 'loadMarketPulse uses AbortController');
+    assert(html.includes('abort.abort()') || html.includes('abort.signal'), 'AbortController wired to fetch signal');
+    assert(html.includes('setTimeout') && html.includes('15000'), 'timeout set to 15 seconds');
+  } catch (e) {
+    assert(false, `read failed: ${e.message}`);
+  }
+
+  section('market pulse resilience: localStorage cache');
+  try {
+    const html = fs.readFileSync(path.join(LITE_DIR, 'index.html'), 'utf-8');
+    assert(html.includes('optionsranker_mp_cache'), 'MP_CACHE_KEY defined for localStorage');
+    assert(html.includes('getMpCache'), 'getMpCache function exists');
+    assert(html.includes('setMpCache'), 'setMpCache function exists');
+    assert(html.includes("localStorage.getItem(MP_CACHE_KEY)"), 'reads cache from localStorage');
+    assert(html.includes("localStorage.setItem(MP_CACHE_KEY"), 'writes cache to localStorage');
+  } catch (e) {
+    assert(false, `read failed: ${e.message}`);
+  }
+
+  section('market pulse resilience: stale data badge');
+  try {
+    const html = fs.readFileSync(path.join(LITE_DIR, 'index.html'), 'utf-8');
+    assert(html.includes('mp-stale-badge'), 'stale badge CSS class defined');
+    assert(html.includes('Last updated'), 'stale badge shows last updated text');
+    assert(html.includes('formatTimeAgo'), 'formatTimeAgo helper function exists');
+    assert(html.includes('isStale'), 'isStale flag used for fallback rendering');
+  } catch (e) {
+    assert(false, `read failed: ${e.message}`);
+  }
+
+  // ─────────────────────────────────────────
+  // 18. AUTH HARDENING (Update #4)
+  // ─────────────────────────────────────────
+  section('auth hardening: OAuth nonce (CSRF protection)');
+  try {
+    const html = fs.readFileSync(path.join(LITE_DIR, 'index.html'), 'utf-8');
+    assert(html.includes('generateNonce'), 'generateNonce function exists');
+    assert(html.includes('optionsranker_oauth_nonce'), 'nonce stored in localStorage');
+    assert(html.includes('nonce: nonce'), 'nonce passed to Google OAuth initialize');
+    assert(html.includes('nonce mismatch'), 'nonce mismatch check in credential handler');
+  } catch (e) {
+    assert(false, `read failed: ${e.message}`);
+  }
+
+  section('auth hardening: session expiry (30-day max)');
+  try {
+    const html = fs.readFileSync(path.join(LITE_DIR, 'index.html'), 'utf-8');
+    assert(html.includes('SESSION_MAX_AGE_MS'), 'SESSION_MAX_AGE_MS constant defined');
+    assert(html.includes('30 * 24 * 60 * 60 * 1000'), '30-day max age in milliseconds');
+    assert(html.includes('isSessionExpired'), 'isSessionExpired function exists');
+    assert(html.includes('savedAt'), 'savedAt timestamp stored with user data');
+  } catch (e) {
+    assert(false, `read failed: ${e.message}`);
+  }
+
+  section('auth hardening: stale data cleanup on expiry');
+  try {
+    const html = fs.readFileSync(path.join(LITE_DIR, 'index.html'), 'utf-8');
+    assert(html.includes("isSessionExpired(parsed)"), 'initAuth checks session expiry');
+    assert(html.includes("localStorage.removeItem('optionsranker_user')"), 'clears user on expiry');
+    assert(html.includes("localStorage.removeItem('optionsranker_oauth_nonce')"), 'clears nonce on sign out');
+  } catch (e) {
+    assert(false, `read failed: ${e.message}`);
+  }
+
+  // ─────────────────────────────────────────
   // 14. DYNAMIC EMAIL DOMAIN (Feature #5)
   // ─────────────────────────────────────────
   section('dynamic email: market-pulse.js');

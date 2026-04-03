@@ -357,6 +357,16 @@ body {
   color: var(--dimmer);
   font-size: 12px;
 }
+.mp-stale-badge {
+  display: inline-block;
+  background: var(--orange, #FF9800);
+  color: #000;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
 .mp-score-row {
   display: flex;
   align-items: center;
@@ -2090,11 +2100,30 @@ document.getElementById('search-results').addEventListener('keydown', (e) => {
 });
 
 // ===== AUTH =====
+const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+function isSessionExpired(user) {
+  if (!user?.savedAt) return true; // legacy entries without timestamp
+  return (Date.now() - user.savedAt) > SESSION_MAX_AGE_MS;
+}
+
+function generateNonce() {
+  const arr = new Uint8Array(16);
+  crypto.getRandomValues(arr);
+  return Array.from(arr, b => b.toString(16).padStart(2, '0')).join('');
+}
+
 function initAuth() {
   const saved = localStorage.getItem('optionsranker_user');
   if (saved) {
     try {
-      currentUser = JSON.parse(saved);
+      const parsed = JSON.parse(saved);
+      if (isSessionExpired(parsed)) {
+        localStorage.removeItem('optionsranker_user');
+        localStorage.removeItem('optionsranker_oauth_nonce');
+        return;
+      }
+      currentUser = parsed;
       renderUserUI();
       syncUser();
       checkSubscription();
@@ -2117,10 +2146,13 @@ function openSignIn() {
   document.getElementById('signin-modal').classList.add('active');
   try {
     if (!appConfig.googleClientId) { console.log('Google auth not configured — no client ID'); return; }
+    const nonce = generateNonce();
+    localStorage.setItem('optionsranker_oauth_nonce', nonce);
     google.accounts.id.initialize({
       client_id: appConfig.googleClientId,
       callback: handleCredentialResponse,
       auto_select: false,
+      nonce: nonce,
     });
     google.accounts.id.renderButton(
       document.getElementById('google-signin-container'),
@@ -2136,7 +2168,14 @@ function closeSignIn() {
 function handleCredentialResponse(response) {
   try {
     const payload = JSON.parse(atob(response.credential.split('.')[1]));
-    currentUser = { name: payload.name, email: payload.email, picture: payload.picture, sub: payload.sub };
+    // Verify nonce matches what we set during openSignIn
+    const expectedNonce = localStorage.getItem('optionsranker_oauth_nonce');
+    if (expectedNonce && payload.nonce && payload.nonce !== expectedNonce) {
+      console.error('OAuth nonce mismatch — possible CSRF');
+      return;
+    }
+    localStorage.removeItem('optionsranker_oauth_nonce');
+    currentUser = { name: payload.name, email: payload.email, picture: payload.picture, sub: payload.sub, savedAt: Date.now() };
     localStorage.setItem('optionsranker_user', JSON.stringify(currentUser));
     closeSignIn();
     renderUserUI();
@@ -2146,7 +2185,7 @@ function handleCredentialResponse(response) {
 }
 
 function signInAsGuest() {
-  currentUser = { name: 'Guest', email: '', picture: '', sub: 'guest_' + Date.now(), isGuest: true };
+  currentUser = { name: 'Guest', email: '', picture: '', sub: 'guest_' + Date.now(), isGuest: true, savedAt: Date.now() };
   localStorage.setItem('optionsranker_user', JSON.stringify(currentUser));
   closeSignIn();
   renderUserUI();
@@ -2156,6 +2195,7 @@ function handleSignOut() {
   currentUser = null;
   userSubscription = { tier: 'free', active: false };
   localStorage.removeItem('optionsranker_user');
+  localStorage.removeItem('optionsranker_oauth_nonce');
   renderUserUI();
   // Re-render cards to apply gating
   if (lastResult) {
@@ -2295,26 +2335,70 @@ async function toggleMarketPulseAlerts() {
 }
 
 // ===== MARKET PULSE =====
+const MP_CACHE_KEY = 'optionsranker_mp_cache';
+
+function getMpCache() {
+  try {
+    const raw = localStorage.getItem(MP_CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function setMpCache(data) {
+  try {
+    localStorage.setItem(MP_CACHE_KEY, JSON.stringify({ ts: Date.now(), data }));
+  } catch { }
+}
+
+function formatTimeAgo(ms) {
+  const mins = Math.floor(ms / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
 async function loadMarketPulse() {
   const container = document.getElementById('mp-content');
   if (!container) return;
 
+  let spyResult, vixResult, rspResult;
+  let isStale = false;
+
   try {
-    // Fetch SPY (1y daily for 200 MA), VIX (3mo daily), RSP equal-weight (3mo daily) in parallel
+    // Fetch with 15s timeout via AbortController
+    const abort = new AbortController();
+    const timeoutId = setTimeout(() => abort.abort(), 15000);
+
     const [spyResp, vixResp, rspResp] = await Promise.all([
-      fetch('/api/chart/SPY?range=1y&interval=1d').then(r => r.json()),
-      fetch('/api/chart/%5EVIX?range=3mo&interval=1d').then(r => r.json()),
-      fetch('/api/chart/RSP?range=3mo&interval=1d').then(r => r.json()),
+      fetch('/api/chart/SPY?range=1y&interval=1d', { signal: abort.signal }).then(r => r.json()),
+      fetch('/api/chart/%5EVIX?range=3mo&interval=1d', { signal: abort.signal }).then(r => r.json()),
+      fetch('/api/chart/RSP?range=3mo&interval=1d', { signal: abort.signal }).then(r => r.json()),
     ]);
+    clearTimeout(timeoutId);
 
-    const spyResult = spyResp.chart?.result?.[0];
-    const vixResult = vixResp.chart?.result?.[0];
-    const rspResult = rspResp.chart?.result?.[0];
+    spyResult = spyResp.chart?.result?.[0];
+    vixResult = vixResp.chart?.result?.[0];
+    rspResult = rspResp.chart?.result?.[0];
 
+    if (!spyResult || !vixResult) throw new Error('Missing market data');
+  } catch(fetchErr) {
+    // Fallback to cached data
+    const cached = getMpCache();
+    if (cached?.data) {
+      spyResult = cached.data.spyResult;
+      vixResult = cached.data.vixResult;
+      rspResult = cached.data.rspResult;
+      isStale = cached.ts;
+    }
     if (!spyResult || !vixResult) {
       container.innerHTML = '<div class="mp-loading">Market data temporarily unavailable.</div>';
       return;
     }
+  }
+
+  try {
 
     const spyCloses = spyResult.indicators.quote[0].close.filter(v => v != null);
     const spyPrice = spyCloses[spyCloses.length - 1];
@@ -2388,6 +2472,11 @@ async function loadMarketPulse() {
 
     let html = '';
 
+    // Stale data badge
+    if (isStale) {
+      html += `<div class="mp-stale-badge">Last updated ${formatTimeAgo(Date.now() - isStale)}</div>`;
+    }
+
     // Score bar
     html += `<div class="mp-score-row">
       <span class="mp-score-label">Signal Strength</span>
@@ -2417,6 +2506,11 @@ async function loadMarketPulse() {
     }
 
     container.innerHTML = html;
+
+    // Cache successful result for offline fallback
+    if (!isStale) {
+      setMpCache({ spyResult, vixResult, rspResult });
+    }
 
     // Report signals to backend (fire-and-forget)
     try {
