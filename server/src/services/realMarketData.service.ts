@@ -34,58 +34,8 @@ class RealMarketDataService {
   private requestCache = new Map<string, { data: any; timestamp: number }>();
   private cacheTimeout = 60000; // 1 minute cache
 
-  // Crumb auth — only needed for the v7 options endpoint
-  private yahooCookie: string = '';
-  private yahooCrumb: string = '';
-  private yahooAuthExpiry: number = 0;
-  private yahooAuthTimeout = 300000; // 5 minutes
-
   private isCacheValid(timestamp: number): boolean {
     return Date.now() - timestamp < this.cacheTimeout;
-  }
-
-  /**
-   * Crumb auth — only needed for options endpoint.
-   * Quote and search endpoints work with just User-Agent on query1.
-   */
-  private async ensureYahooAuth(): Promise<boolean> {
-    if (Date.now() < this.yahooAuthExpiry) {
-      return !!(this.yahooCookie && this.yahooCrumb);
-    }
-    try {
-      // Step 1: get cookie via https.get (follows redirects by default)
-      const cookieResult = await new Promise<string>((resolve, reject) => {
-        https.get('https://fc.yahoo.com/x', { headers: { 'User-Agent': UA } }, (res) => {
-          const sc = res.headers['set-cookie'];
-          const cookie = sc ? (Array.isArray(sc) ? sc[0] : sc).split(';')[0] : '';
-          res.resume(); // drain
-          resolve(cookie);
-        }).on('error', reject);
-      });
-      this.yahooCookie = cookieResult;
-
-      if (!this.yahooCookie) {
-        console.error('[RealData] Yahoo auth: no cookie received');
-        this.yahooAuthExpiry = Date.now() + 60000;
-        return false;
-      }
-
-      // Step 2: exchange cookie for crumb
-      const crumbResult = await httpGet('https://query1.finance.yahoo.com/v1/test/getcrumb', { 'Cookie': this.yahooCookie });
-      if (crumbResult.status !== 200) {
-        console.error(`[RealData] Yahoo crumb failed: ${crumbResult.status}`);
-        this.yahooAuthExpiry = Date.now() + 60000;
-        return false;
-      }
-      this.yahooCrumb = crumbResult.body;
-      this.yahooAuthExpiry = Date.now() + this.yahooAuthTimeout;
-      console.log(`[RealData] Yahoo auth OK`);
-      return true;
-    } catch (error) {
-      console.error('[RealData] Yahoo auth failed:', error);
-      this.yahooAuthExpiry = Date.now() + 60000;
-      return false;
-    }
   }
 
   // ── Quotes ────────────────────────────────────────────────────────
@@ -179,7 +129,7 @@ class RealMarketDataService {
     if (!query || query.length < 1) return [];
 
     try {
-      const data = await httpJSON(`https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=10&newsCount=0`);
+      const data = await httpJSON(`${PROXY_BASE}/api/search?q=${encodeURIComponent(query)}&quotesCount=10`);
       if (!data.quotes) return [];
 
       const symbols = data.quotes
@@ -195,7 +145,7 @@ class RealMarketDataService {
     }
   }
 
-  // ── Options (requires crumb auth) ─────────────────────────────────
+  // ── Options (via ChartNova proxy) ──────────────────────────────────
 
   async getOptionsChain(symbol: string): Promise<OptionsChain | null> {
     const cacheKey = `options_${symbol}`;
@@ -203,14 +153,8 @@ class RealMarketDataService {
     if (cached && this.isCacheValid(cached.timestamp)) return cached.data;
 
     try {
-      const authed = await this.ensureYahooAuth();
-      if (!authed) {
-        console.warn(`[RealData] Options skipped for ${symbol}: auth unavailable`);
-        return null;
-      }
-
-      const baseUrl = `https://query1.finance.yahoo.com/v7/finance/options/${symbol}?crumb=${encodeURIComponent(this.yahooCrumb)}`;
-      const data = await httpJSON(baseUrl, { 'Cookie': this.yahooCookie });
+      // Route through ChartNova proxy which handles crumb auth reliably
+      const data = await httpJSON(`${PROXY_BASE}/api/options/${symbol}`);
       const result = data.optionChain?.result?.[0];
       if (!result) return null;
 
@@ -235,8 +179,7 @@ class RealMarketDataService {
       // Fetch remaining expirations
       for (let i = 1; i < expirationEpochs.length; i++) {
         try {
-          const expUrl = `${baseUrl}&date=${expirationEpochs[i]}`;
-          const expData = await httpJSON(expUrl, { 'Cookie': this.yahooCookie });
+          const expData = await httpJSON(`${PROXY_BASE}/api/options/${symbol}?date=${expirationEpochs[i]}`);
           const expResult = expData.optionChain?.result?.[0];
           if (expResult?.options?.[0]) {
             const expStr = expirations[i];
