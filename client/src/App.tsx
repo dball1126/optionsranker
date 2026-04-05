@@ -7,6 +7,7 @@ import { StrategyBuilderPage } from '@/pages/StrategyBuilderPage';
 import { PortfolioPage } from '@/pages/PortfolioPage';
 import { MarketPage } from '@/pages/MarketPage';
 import FlowPage from '@/pages/FlowPage';
+import RankingPage from '@/pages/RankingPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { RegisterPage } from '@/pages/RegisterPage';
 import { useAuthStore } from '@/stores/authStore';
@@ -26,6 +27,7 @@ function App() {
         <Route path="/strategy-builder" element={<StrategyBuilderPage />} />
         <Route path="/portfolio" element={<PortfolioPage />} />
         <Route path="/market" element={<MarketPage />} />
+        <Route path="/rankings" element={<RankingPage />} />
         <Route path="/flow" element={<FlowPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />

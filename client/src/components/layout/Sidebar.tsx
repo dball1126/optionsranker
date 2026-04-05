@@ -7,6 +7,7 @@ import {
   Briefcase,
   TrendingUp,
   Activity,
+  Trophy,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -16,6 +17,7 @@ const navItems = [
   { to: '/', icon: BarChart3, label: 'Dashboard' },
   { to: '/education', icon: GraduationCap, label: 'Education' },
   { to: '/strategy-builder', icon: Wrench, label: 'Strategy Builder' },
+  { to: '/rankings', icon: Trophy, label: 'Strategy Ranker' },
   { to: '/portfolio', icon: Briefcase, label: 'Portfolio' },
   { to: '/market', icon: TrendingUp, label: 'Market' },
   { to: '/flow', icon: Activity, label: 'Options Flow' },
