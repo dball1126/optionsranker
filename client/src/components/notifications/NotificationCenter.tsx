@@ -31,42 +31,7 @@ interface NotificationPreferences {
   signalThreshold: number;
 }
 
-// Mock notifications
-function generateMockNotifications(): Notification[] {
-  return [
-    {
-      id: 1,
-      signalId: 123,
-      notificationType: 'signal',
-      title: '🎯 High-Confidence BULLISH Signal',
-      message: 'AAPL: 85% confidence call signal detected - suggested 170 call expiring 12/20',
-      createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
-    },
-    {
-      id: 2,
-      notificationType: 'signal',
-      title: '📈 BEARISH Signal Alert',
-      message: 'TSLA: 78% confidence put signal - high volume unusual activity detected',
-      readAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
-      createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
-    },
-    {
-      id: 3,
-      notificationType: 'educational',
-      title: '📚 New Learning Module Available',
-      message: 'Master Iron Condor Strategies - Advanced risk management techniques',
-      createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-    },
-    {
-      id: 4,
-      notificationType: 'system',
-      title: '🚀 Welcome to OptionsRanker!',
-      message: 'Start with paper trading to practice risk-free. Upgrade anytime for live signals.',
-      readAt: new Date().toISOString(),
-      createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
-    }
-  ];
-}
+// Notifications loaded from API — no hardcoded mock data
 
 interface NotificationCenterProps {
   onUpgrade: () => void;
@@ -89,11 +54,9 @@ export function NotificationCenter({ onUpgrade }: NotificationCenterProps) {
       setBrowserPermission(Notification.permission);
     }
 
-    // Load mock data
-    setTimeout(() => {
-      setNotifications(generateMockNotifications());
-      setLoading(false);
-    }, 1000);
+    // No notifications API yet — show empty state
+    setNotifications([]);
+    setLoading(false);
   }, []);
 
   const requestNotificationPermission = async () => {

@@ -269,6 +269,17 @@ const BUILDERS: Record<string, StrategyBuilder> = {
 
 // ── Scoring ─────────────────────────────────────────────────────────
 
+const MIN_DTE = 7; // minimum days to expiration
+
+/** Lognormal probability density function */
+function lognormalPDF(ST: number, S: number, T: number, sigma: number): number {
+  if (ST <= 0 || T <= 0 || sigma <= 0) return 0;
+  const mu = Math.log(S) + (R - 0.5 * sigma * sigma) * T;
+  const s = sigma * Math.sqrt(T);
+  const logST = Math.log(ST);
+  return Math.exp(-0.5 * ((logST - mu) / s) ** 2) / (ST * s * Math.sqrt(2 * Math.PI));
+}
+
 function computePoP(
   S: number, breakevens: number[], T: number, sigma: number,
   maxProfitPrice: 'above' | 'below' | 'between',
@@ -276,7 +287,6 @@ function computePoP(
   if (breakevens.length === 0) return 0.5;
 
   if (breakevens.length === 1) {
-    // Single breakeven: profitable above or below
     if (maxProfitPrice === 'above') return probAbove(S, breakevens[0], T, sigma);
     return probBelow(S, breakevens[0], T, sigma);
   }
@@ -284,14 +294,11 @@ function computePoP(
   if (breakevens.length === 2) {
     const [lower, upper] = breakevens.sort((a, b) => a - b);
     if (maxProfitPrice === 'between') {
-      // Profitable between breakevens (iron condor, iron butterfly)
       return probAbove(S, lower, T, sigma) - probAbove(S, upper, T, sigma);
     }
-    // Profitable outside breakevens (straddle, strangle)
     return probBelow(S, lower, T, sigma) + probAbove(S, upper, T, sigma);
   }
 
-  // Fallback for complex strategies
   return 0.5;
 }
 
@@ -305,25 +312,52 @@ function getMaxProfitDirection(strategyType: string): 'above' | 'below' | 'betwe
   }
 }
 
-function scoreStrategy(
-  analysis: { maxProfit: number | 'unlimited'; maxLoss: number | 'unlimited'; breakeven: number[]; pnlData: { price: number; pnl: number }[] },
-  pop: number,
-  allExpectedValues: number[],
-  allRiskRewards: number[],
-  expectedValue: number,
-  riskReward: number,
+/**
+ * Compute expected value by integrating P&L curve against lognormal probability density.
+ * This is the proper way: EV = ∫ PnL(S_T) * f(S_T) dS_T
+ */
+function computeExpectedValue(
+  pnlData: { price: number; pnl: number }[],
+  S: number, T: number, sigma: number,
 ): number {
-  // Normalize to 0-1 relative to best in the set
-  const maxEV = Math.max(...allExpectedValues, 1);
-  const maxRR = Math.max(...allRiskRewards, 0.01);
+  if (pnlData.length < 2) return 0;
+  let ev = 0;
+  for (let i = 1; i < pnlData.length; i++) {
+    const price = pnlData[i].price;
+    const pnl = pnlData[i].pnl;
+    const dPrice = pnlData[i].price - pnlData[i - 1].price;
+    const density = lognormalPDF(price, S, T, sigma);
+    ev += pnl * density * dPrice;
+  }
+  return ev;
+}
 
-  const normEV = Math.max(0, expectedValue) / maxEV;
-  const normRR = Math.min(riskReward, MAX_RISK_REWARD_CAP) / MAX_RISK_REWARD_CAP;
+/** Resolve "unlimited" max loss to a practical 2-sigma downside move */
+function resolveMaxLoss(maxLoss: number | 'unlimited', S: number, T: number, sigma: number): number {
+  if (typeof maxLoss === 'number') return Math.abs(maxLoss);
+  // 2-sigma downside for stock-based strategies
+  const twoSigmaDown = S * (1 - Math.exp(-sigma * Math.sqrt(T) * 2));
+  return twoSigmaDown * 100;
+}
 
-  return normEV * 0.50 + pop * 0.30 + normRR * 0.20;
+/** Resolve "unlimited" max profit to a practical 2-sigma upside move */
+function resolveMaxProfit(maxProfit: number | 'unlimited', S: number, T: number, sigma: number): number {
+  if (typeof maxProfit === 'number') return maxProfit;
+  const twoSigmaUp = S * (Math.exp(sigma * Math.sqrt(T) * 2) - 1);
+  return twoSigmaUp * 100;
 }
 
 // ── Main Ranking Function ───────────────────────────────────────────
+
+/** Pick the best expiration: first one with ≥7 DTE, or furthest available */
+function selectExpiration(expirations: string[]): string | null {
+  if (!expirations.length) return null;
+  for (const exp of expirations) {
+    const days = (new Date(exp).getTime() - Date.now()) / 86400000;
+    if (days >= MIN_DTE) return exp;
+  }
+  return expirations[expirations.length - 1]; // fallback to furthest
+}
 
 export async function rankStrategies(symbol: string): Promise<RankingResponse> {
   const chain = await realMarketDataService.getOptionsChain(symbol);
@@ -332,11 +366,11 @@ export async function rankStrategies(symbol: string): Promise<RankingResponse> {
   }
 
   const S = chain.underlyingPrice;
-  const expiration = chain.expirations[0]; // nearest expiration
+  const expiration = selectExpiration(chain.expirations);
+  if (!expiration) return { symbol, underlyingPrice: S, expiration: '', rankedStrategies: [] };
+
   const expData = chain.chain[expiration];
-  if (!expData) {
-    return { symbol, underlyingPrice: S, expiration, rankedStrategies: [] };
-  }
+  if (!expData) return { symbol, underlyingPrice: S, expiration, rankedStrategies: [] };
 
   const { calls, puts } = expData;
   const sigma = avgIV([...calls, ...puts]);
@@ -348,11 +382,9 @@ export async function rankStrategies(symbol: string): Promise<RankingResponse> {
   for (const template of STRATEGY_TEMPLATES) {
     const builder = BUILDERS[template.type];
     if (!builder) continue;
-
     const concrete = builder(calls, puts, S, expiration);
     if (!concrete) continue;
 
-    // Use the existing strategy analyzer for P&L, breakevens, max profit/loss
     const analysis = analyzeStrategy({
       underlying: symbol,
       underlyingPrice: S,
@@ -360,7 +392,6 @@ export async function rankStrategies(symbol: string): Promise<RankingResponse> {
       volatility: sigma,
       riskFreeRate: R,
     });
-
     candidates.push({ concrete, analysis });
   }
 
@@ -368,50 +399,52 @@ export async function rankStrategies(symbol: string): Promise<RankingResponse> {
     return { symbol, underlyingPrice: S, expiration, rankedStrategies: [] };
   }
 
-  // Compute PoP, expected value, and risk-reward for each
-  const scored: {
-    concrete: ConcreteStrategy;
-    analysis: ReturnType<typeof analyzeStrategy>;
-    pop: number;
-    expectedValue: number;
-    riskReward: number;
-  }[] = [];
-
-  for (const { concrete, analysis } of candidates) {
+  // Score each strategy
+  const scored = candidates.map(({ concrete, analysis }) => {
     const direction = getMaxProfitDirection(concrete.strategyType);
-    const pop = computePoP(S, analysis.breakeven, T, sigma,
-      direction === 'outside' ? 'above' : direction as 'above' | 'below' | 'between');
 
-    // For straddle/strangle, PoP is outside breakevens
-    const adjustedPoP = direction === 'outside' && analysis.breakeven.length === 2
+    // Probability of profit
+    const pop = direction === 'outside' && analysis.breakeven.length === 2
       ? probBelow(S, Math.min(...analysis.breakeven), T, sigma) + probAbove(S, Math.max(...analysis.breakeven), T, sigma)
-      : pop;
+      : computePoP(S, analysis.breakeven, T, sigma,
+          direction === 'outside' ? 'above' : direction as 'above' | 'below' | 'between');
 
-    // Expected value from P&L data weighted by probability
-    const maxP = analysis.maxProfit === 'unlimited' ? Math.max(...analysis.pnlData.map(d => d.pnl)) : analysis.maxProfit;
-    const maxL = analysis.maxLoss === 'unlimited' ? Math.min(...analysis.pnlData.map(d => d.pnl)) : analysis.maxLoss;
-    const avgProfit = maxP > 0 ? maxP * 0.5 : 0; // conservative: assume average profit is half of max
-    const avgLoss = maxL < 0 ? Math.abs(maxL) * 0.5 : 0;
-    const expectedValue = (adjustedPoP * avgProfit) - ((1 - adjustedPoP) * avgLoss);
+    // Expected value via proper probability-weighted integration
+    const expectedValue = computeExpectedValue(analysis.pnlData, S, T, sigma);
 
-    const absMaxLoss = analysis.maxLoss === 'unlimited' ? 1 : Math.abs(typeof analysis.maxLoss === 'number' ? analysis.maxLoss : 1);
-    const absMaxProfit = analysis.maxProfit === 'unlimited' ? absMaxLoss * MAX_RISK_REWARD_CAP : (typeof analysis.maxProfit === 'number' ? analysis.maxProfit : 0);
-    const riskReward = absMaxLoss > 0 ? absMaxProfit / absMaxLoss : MAX_RISK_REWARD_CAP;
+    // Risk/reward with practical caps for unlimited strategies
+    const practicalMaxProfit = resolveMaxProfit(analysis.maxProfit, S, T, sigma);
+    const practicalMaxLoss = resolveMaxLoss(analysis.maxLoss, S, T, sigma);
+    const riskReward = practicalMaxLoss > 0
+      ? Math.min(practicalMaxProfit / practicalMaxLoss, MAX_RISK_REWARD_CAP) : MAX_RISK_REWARD_CAP;
 
-    scored.push({ concrete, analysis, pop: adjustedPoP, expectedValue, riskReward });
-  }
+    // Theta efficiency: daily income per dollar risked (benefits credit strategies)
+    const dailyTheta = analysis.greeks.theta;
+    const thetaEfficiency = dailyTheta > 0 && practicalMaxLoss > 0
+      ? Math.min(1, (dailyTheta / practicalMaxLoss) * 100) : 0;
 
+    return { concrete, analysis, pop, expectedValue, riskReward, thetaEfficiency };
+  });
+
+  // Normalize and compute final scores
   const allEVs = scored.map(s => s.expectedValue);
   const allRRs = scored.map(s => s.riskReward);
+  const maxEV = Math.max(...allEVs.map(Math.abs), 1);
+  const maxRR = Math.max(...allRRs, 0.01);
 
-  // Score and rank
   const ranked: RankedStrategy[] = scored
-    .map(({ concrete, analysis, pop, expectedValue, riskReward }) => {
-      const score = scoreStrategy(analysis, pop, allEVs, allRRs, expectedValue, riskReward);
+    .map(({ concrete, analysis, pop, expectedValue, riskReward, thetaEfficiency }) => {
+      // Normalize EV: map from [-maxEV, maxEV] to [0, 1]
+      const normEV = (expectedValue + maxEV) / (2 * maxEV);
+      const normRR = Math.min(riskReward, MAX_RISK_REWARD_CAP) / MAX_RISK_REWARD_CAP;
+
+      // Score: EV 40% + PoP 25% + R:R 15% + Theta 20%
+      const score = normEV * 0.40 + pop * 0.25 + normRR * 0.15 + thetaEfficiency * 0.20;
+
       const liquidityScore = Math.min(...concrete.contracts.map(c => c.volume + c.openInterest));
 
       return {
-        rank: 0, // assigned after sort
+        rank: 0,
         strategyType: concrete.strategyType as any,
         strategyName: concrete.strategyName,
         score: Math.round(score * 10000) / 10000,
@@ -436,5 +469,6 @@ export async function rankStrategies(symbol: string): Promise<RankingResponse> {
 // Export helpers for testing
 export const _testing = {
   findATM, findByStrike, findByDelta, getStrikeOffset, midPrice, isLiquid,
-  avgIV, probAbove, probBelow, computePoP, BUILDERS,
+  avgIV, probAbove, probBelow, computePoP, computeExpectedValue, lognormalPDF,
+  resolveMaxLoss, resolveMaxProfit, selectExpiration, BUILDERS,
 };

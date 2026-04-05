@@ -120,13 +120,22 @@ export function SignalPerformanceDashboard({ onUpgrade }: SignalPerformanceDashb
   const [activeTab, setActiveTab] = useState<'overview' | 'signals'>('overview');
 
   useEffect(() => {
-    // Simulate API calls
-    setTimeout(() => {
-      const mockSignals = generateMockSignals();
-      setSignals(mockSignals);
-      setPerformance(generateMockPerformance(mockSignals));
+    // Load real signals from API
+    async function loadSignals() {
+      try {
+        const [sigRes, perfRes] = await Promise.all([
+          fetch('/api/signals').then(r => r.json()),
+          fetch('/api/signals/performance').then(r => r.json()),
+        ]);
+        if (sigRes.success) setSignals(sigRes.data || []);
+        if (perfRes.success) setPerformance(perfRes.data || null);
+      } catch {
+        setSignals([]);
+        setPerformance(null);
+      }
       setLoading(false);
-    }, 1000);
+    }
+    loadSignals();
   }, []);
 
   if (loading) {

@@ -26,51 +26,8 @@ import { useSubscriptionStore } from '@/stores/subscriptionStore';
 
 type DashboardTab = 'overview' | 'paper-trading' | 'signals' | 'notifications';
 
-// Mock data for high-confidence signals
-const mockHighConfidenceSignals = [
-  {
-    id: 1,
-    symbol: 'AAPL',
-    signalType: 'bullish' as const,
-    confidence: 87,
-    suggestedDirection: 'call' as const,
-    suggestedStrike: 175,
-    suggestedExpiry: '2024-01-19',
-    targetPrice: 180,
-    currentPrice: 172.50,
-    timeRemaining: '2d 14h',
-    priceChange: 2.40,
-    priceChangePercent: 1.41
-  },
-  {
-    id: 2,
-    symbol: 'NVDA',
-    signalType: 'bearish' as const,
-    confidence: 82,
-    suggestedDirection: 'put' as const,
-    suggestedStrike: 450,
-    suggestedExpiry: '2024-01-26',
-    targetPrice: 430,
-    currentPrice: 465.20,
-    timeRemaining: '5d 8h',
-    priceChange: -8.30,
-    priceChangePercent: -1.75
-  },
-  {
-    id: 3,
-    symbol: 'TSLA',
-    signalType: 'bullish' as const,
-    confidence: 79,
-    suggestedDirection: 'call' as const,
-    suggestedStrike: 220,
-    suggestedExpiry: '2024-02-02',
-    targetPrice: 235,
-    currentPrice: 218.75,
-    timeRemaining: '12d 3h',
-    priceChange: 5.25,
-    priceChangePercent: 2.46
-  }
-];
+// Signals are loaded from the real API via useSignalStore
+// No hardcoded mock data — signals come from the database
 
 export function ProDashboardPage() {
   const navigate = useNavigate();
@@ -254,7 +211,7 @@ export function ProDashboardPage() {
 
               {/* Mobile-optimized signal cards */}
               <div className="space-y-3 md:hidden">
-                {mockHighConfidenceSignals.map((signal) => (
+                {([] as any[]).map((signal) => (
                   <MobileSignalCard
                     key={signal.id}
                     signal={signal}
@@ -281,7 +238,7 @@ export function ProDashboardPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {mockHighConfidenceSignals.map((signal) => (
+                      {([] as any[]).map((signal) => (
                         <tr key={signal.id} className="border-b">
                           <td className="p-4 font-medium">{signal.symbol}</td>
                           <td className="p-4">

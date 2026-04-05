@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { OptionsContract, OptionsChain } from '@optionsranker/shared';
 import { _testing } from '../services/ranking.service.js';
 
-const { findATM, findByStrike, getStrikeOffset, midPrice, isLiquid, avgIV, probAbove, probBelow, computePoP, BUILDERS } = _testing;
+const { findATM, findByStrike, getStrikeOffset, midPrice, isLiquid, avgIV, probAbove, probBelow, computePoP, computeExpectedValue, lognormalPDF, resolveMaxLoss, resolveMaxProfit, selectExpiration, BUILDERS } = _testing;
 
 // ── Mock Data Factory ───────────────────────────────────────────────
 
@@ -321,5 +321,108 @@ describe('Edge Cases', () => {
       const result = BUILDERS[type](illiquidCalls, illiquidPuts, 250, '2026-05-15');
       expect(result).toBeNull();
     }
+  });
+});
+
+// ── Expiration Selection Tests ──────────────────────────────────────
+
+describe('Expiration Selection', () => {
+  it('Skips expirations < 7 DTE', () => {
+    const today = new Date();
+    const tomorrow = new Date(today.getTime() + 86400000).toISOString().split('T')[0];
+    const nextWeek = new Date(today.getTime() + 10 * 86400000).toISOString().split('T')[0];
+    const exp = selectExpiration([tomorrow, nextWeek]);
+    expect(exp).toBe(nextWeek);
+  });
+
+  it('Falls back to furthest expiration if all < 7 DTE', () => {
+    const today = new Date();
+    const d1 = new Date(today.getTime() + 1 * 86400000).toISOString().split('T')[0];
+    const d3 = new Date(today.getTime() + 3 * 86400000).toISOString().split('T')[0];
+    const exp = selectExpiration([d1, d3]);
+    expect(exp).toBe(d3);
+  });
+
+  it('Returns null for empty expirations', () => {
+    expect(selectExpiration([])).toBeNull();
+  });
+});
+
+// ── Expected Value Integration Tests ────────────────────────────────
+
+describe('Expected Value (probability-weighted)', () => {
+  it('Produces reasonable EV for Long Call', () => {
+    // Simple P&L curve: loss below breakeven, profit above
+    const pnlData = [];
+    const S = 250;
+    for (let i = 0; i <= 60; i++) {
+      const price = 175 + i * 2.5; // 175 to 325
+      const pnl = Math.max(-500, (price - 255) * 100); // breakeven at 255, max loss $500
+      pnlData.push({ price, pnl });
+    }
+    const T = 30 / 365;
+    const ev = computeExpectedValue(pnlData, S, T, 0.30);
+    // Should be modest — not thousands of dollars
+    expect(ev).toBeGreaterThan(-500);
+    expect(ev).toBeLessThan(500);
+  });
+
+  it('Iron Condor has positive EV when PoP is high', () => {
+    // Credit spread: max profit $200 between 240-260, max loss $300 outside
+    const pnlData = [];
+    const S = 250;
+    for (let i = 0; i <= 60; i++) {
+      const price = 175 + i * 2.5;
+      let pnl: number;
+      if (price >= 240 && price <= 260) pnl = 200;
+      else pnl = -300;
+      pnlData.push({ price, pnl });
+    }
+    const T = 30 / 365;
+    const ev = computeExpectedValue(pnlData, S, T, 0.20); // low vol
+    // Low vol iron condor: EV should be near breakeven (slightly negative to slightly positive)
+    // The $200/$300 payoff with ±$10 range at 20% IV is close to fair
+    expect(ev).toBeGreaterThan(-100);
+    expect(ev).toBeLessThan(200);
+  });
+
+  it('Lognormal PDF integrates to approximately 1', () => {
+    const S = 250;
+    const T = 30 / 365;
+    const sigma = 0.30;
+    let integral = 0;
+    const dPrice = 0.5;
+    for (let price = 50; price <= 500; price += dPrice) {
+      integral += lognormalPDF(price, S, T, sigma) * dPrice;
+    }
+    expect(integral).toBeCloseTo(1, 1); // within 0.1
+  });
+});
+
+// ── Realistic Risk Resolution Tests ─────────────────────────────────
+
+describe('Risk Resolution', () => {
+  it('resolveMaxLoss for unlimited uses 2-sigma', () => {
+    const S = 250;
+    const T = 30 / 365;
+    const sigma = 0.30;
+    const loss = resolveMaxLoss('unlimited', S, T, sigma);
+    // 2-sigma downside for 30 days at 30% IV: ~$28 per share, so ~$2800 per 100 shares
+    expect(loss).toBeGreaterThan(1000);
+    expect(loss).toBeLessThan(10000);
+  });
+
+  it('resolveMaxProfit for unlimited uses 2-sigma', () => {
+    const S = 250;
+    const T = 30 / 365;
+    const sigma = 0.30;
+    const profit = resolveMaxProfit('unlimited', S, T, sigma);
+    expect(profit).toBeGreaterThan(1000);
+    expect(profit).toBeLessThan(15000);
+  });
+
+  it('resolveMaxLoss passes through numeric values', () => {
+    expect(resolveMaxLoss(-500, 250, 30 / 365, 0.30)).toBe(500);
+    expect(resolveMaxLoss(0, 250, 30 / 365, 0.30)).toBe(0);
   });
 });

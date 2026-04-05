@@ -116,8 +116,12 @@ router.patch('/:id/resolve', authenticate, async (req: Request, res: Response) =
   }
 });
 
-// Generate mock signals for demo (development only)
+// Generate mock signals (development only — blocked in production)
 router.post('/mock', async (req: Request, res: Response) => {
+  if (process.env.NODE_ENV === 'production') {
+    res.status(403).json({ success: false, error: 'Not available in production' });
+    return;
+  }
   try {
     SignalService.generateMockSignals();
     
