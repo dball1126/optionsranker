@@ -39,6 +39,30 @@ export interface StrategyAnalysisRequest {
   volatility?: number;
 }
 
+export interface RankedStrategy {
+  rank: number;
+  strategyType: StrategyType;
+  strategyName: string;
+  score: number;
+  legs: StrategyLeg[];
+  maxProfit: number | 'unlimited';
+  maxLoss: number | 'unlimited';
+  breakeven: number[];
+  probabilityOfProfit: number;
+  expectedValue: number;
+  riskRewardRatio: number;
+  liquidityScore: number;
+  netDebit: number;
+  expiration: string;
+}
+
+export interface RankingResponse {
+  symbol: string;
+  underlyingPrice: number;
+  expiration: string;
+  rankedStrategies: RankedStrategy[];
+}
+
 export interface StrategyAnalysisResponse {
   legs: StrategyLeg[];
   greeks: {

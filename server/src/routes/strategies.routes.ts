@@ -2,7 +2,8 @@ import { Router } from 'express';
 import { validate } from '../middleware/validate.js';
 import { strategyAnalysisSchema } from '@optionsranker/shared';
 import * as strategyService from '../services/strategy.service.js';
-import type { ApiResponse, StrategyAnalysisResponse } from '@optionsranker/shared';
+import { rankStrategies } from '../services/ranking.service.js';
+import type { ApiResponse, StrategyAnalysisResponse, RankingResponse } from '@optionsranker/shared';
 import type { StrategyTemplate } from '@optionsranker/shared';
 
 const router = Router();
@@ -26,6 +27,20 @@ router.get('/templates', (_req, res, next) => {
     const response: ApiResponse<StrategyTemplate[]> = {
       success: true,
       data: templates,
+    };
+    res.json(response);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/rank/:symbol', async (req, res, next) => {
+  try {
+    const symbol = String(req.params.symbol).toUpperCase();
+    const result = await rankStrategies(symbol);
+    const response: ApiResponse<RankingResponse> = {
+      success: true,
+      data: result,
     };
     res.json(response);
   } catch (error) {
