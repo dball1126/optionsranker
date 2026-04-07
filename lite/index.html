@@ -628,6 +628,14 @@ body {
 .card-greek { font-size: 9px; color: var(--dim); }
 .card-greek span { color: var(--text); font-weight: 600; }
 
+/* Score breakdown bars */
+.score-breakdown { display: flex; gap: 3px; margin-top: 8px; padding-top: 8px; border-top: 1px solid #ffffff08; align-items: flex-end; }
+.sb-item { flex: 1; text-align: center; }
+.sb-bar-track { height: 22px; background: #ffffff08; border-radius: 3px; position: relative; overflow: hidden; }
+.sb-bar-fill { position: absolute; bottom: 0; left: 0; width: 100%; border-radius: 3px; transition: height 0.3s ease; }
+.sb-label { font-size: 7px; color: var(--dim); text-transform: uppercase; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sb-val { font-size: 8px; color: var(--text); font-weight: 600; margin-top: 2px; }
+
 /* Locked card overlay */
 .lock-overlay {
   position: absolute;
@@ -1455,7 +1463,17 @@ function scoreStrategy(s, ivRank) {
   const spreadPct = avgLegPrice > 0 ? s.bidAskSpread / s.legs.length / avgLegPrice : 1;
   const baScore = Math.max(0, (1 - Math.min(1, spreadPct)) * 10);
   const total = Math.round(rrScore + probScore + evScore + ivScore + liqScore + baScore);
-  return { total: Math.max(0, Math.min(100, total)), prob, rr, ev };
+  return {
+    total: Math.max(0, Math.min(100, total)), prob, rr, ev,
+    components: {
+      rr: { score: Math.round(rrScore * 10) / 10, max: 20, label: 'Risk/Reward' },
+      prob: { score: Math.round(probScore * 10) / 10, max: 20, label: 'Probability' },
+      ev: { score: Math.round(evScore * 10) / 10, max: 15, label: 'Exp. Value' },
+      iv: { score: Math.round(ivScore * 10) / 10, max: 25, label: 'IV Alignment' },
+      liq: { score: Math.round(liqScore * 10) / 10, max: 10, label: 'Liquidity' },
+      ba: { score: Math.round(baScore * 10) / 10, max: 10, label: 'Bid-Ask' },
+    }
+  };
 }
 
 // Main analyzer
@@ -1610,7 +1628,7 @@ async function analyzeOptionsStrategies(symbol) {
   // Score
   allStrategies.forEach(s => {
     const scores = scoreStrategy(s, ivRank);
-    s.score = scores.total; s.probDisplay = scores.prob; s.rrDisplay = scores.rr; s.evDisplay = scores.ev;
+    s.score = scores.total; s.probDisplay = scores.prob; s.rrDisplay = scores.rr; s.evDisplay = scores.ev; s.scoreComponents = scores.components;
   });
   allStrategies.sort((a, b) => b.score - a.score);
 
@@ -1719,6 +1737,16 @@ function renderResults(result) {
   loadSavedStrategies().then(() => renderSavedSection());
 }
 
+function renderScoreBreakdown(components) {
+  const keys = ['rr', 'prob', 'ev', 'iv', 'liq', 'ba'];
+  return '<div class="score-breakdown">' + keys.map(k => {
+    const c = components[k];
+    const pct = Math.round((c.score / c.max) * 100);
+    const color = pct >= 70 ? 'var(--green)' : pct >= 40 ? 'var(--orange)' : 'var(--red)';
+    return `<div class="sb-item"><div class="sb-label">${c.label}</div><div class="sb-bar-track"><div class="sb-bar-fill" style="height:${pct}%;background:${color}"></div></div><div class="sb-val">${c.score}/${c.max}</div></div>`;
+  }).join('') + '</div>';
+}
+
 function renderStrategyCards(strategies) {
   if (!strategies.length) return '<div class="loading-state">No viable strategies found.</div>';
   return strategies.map((s, i) => {
@@ -1756,6 +1784,7 @@ function renderStrategyCards(strategies) {
         <div class="card-greek">Theta <span>${s.greeks.theta.toFixed(2)}</span></div>
         <div class="card-greek">Vega <span>${s.greeks.vega.toFixed(2)}</span></div>
       </div>
+      ${s.scoreComponents ? renderScoreBreakdown(s.scoreComponents) : ''}
     </div>`;
   }).join('');
 }
