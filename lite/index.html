@@ -456,6 +456,7 @@ body {
   display: flex;
   align-items: baseline;
   gap: 10px;
+  flex-wrap: wrap;
 }
 .results-ticker h2 {
   font-size: 24px;
@@ -621,6 +622,19 @@ body {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.7; }
 }
+.market-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  margin-left: 6px;
+}
+.market-status-badge.open { background: #4caf5020; color: var(--green); border: 1px solid #4caf5040; }
+.market-status-badge.pre { background: #FF980020; color: var(--orange); border: 1px solid #FF980040; }
+.market-status-badge.closed { background: var(--bg3); color: var(--dimmer); border: 1px solid var(--border); }
 .earnings-warning {
   background: #FF980015;
   border: 1px solid #FF980030;
@@ -1531,6 +1545,10 @@ async function analyzeOptionsStrategies(symbol) {
   const S = quote.regularMarketPrice || 0;
   if (!S) throw new Error('No price data');
 
+  // Market status
+  const marketState = quote.marketState || 'CLOSED';
+  const regularMarketTime = quote.regularMarketTime || null;
+
   // Earnings Calendar — extract earningsTimestamp
   const earningsTs = quote.earningsTimestamp || quote.earningsTimestampStart || null;
   let daysUntilEarnings = null;
@@ -1700,7 +1718,7 @@ async function analyzeOptionsStrategies(symbol) {
     if (!seen.has(s.name)) { unique.push(s); seen.set(s.name, 1); }
   });
 
-  return { strategies: unique, ivRank, avgIV, ivSource, price: S, chainData: allChainData, expirations, symbol, daysUntilEarnings };
+  return { strategies: unique, ivRank, avgIV, ivSource, price: S, chainData: allChainData, expirations, symbol, daysUntilEarnings, marketState, regularMarketTime };
 }
 
 // ===== STRATEGY EXPLANATIONS =====
@@ -1729,7 +1747,7 @@ function isStrategyLocked(index) {
 
 function renderResults(result) {
   lastResult = result;
-  const { strategies, ivRank, avgIV, ivSource, price, chainData, symbol, daysUntilEarnings } = result;
+  const { strategies, ivRank, avgIV, ivSource, price, chainData, symbol, daysUntilEarnings, marketState, regularMarketTime } = result;
 
   document.getElementById('results-symbol').textContent = symbol;
   document.getElementById('results-price').textContent = '$' + price.toFixed(2);
@@ -1743,6 +1761,32 @@ function renderResults(result) {
     badge.className = 'earnings-badge';
     badge.textContent = '\u26A1 Earnings in ' + daysUntilEarnings + (daysUntilEarnings === 1 ? ' day' : ' days');
     document.querySelector('.results-ticker').appendChild(badge);
+  }
+
+  // Market status badge
+  const existingMsBadge = document.getElementById('market-status-badge');
+  if (existingMsBadge) existingMsBadge.remove();
+  if (marketState) {
+    const msBadge = document.createElement('span');
+    msBadge.id = 'market-status-badge';
+    let msClass = 'closed', msText = '';
+    const fmtTime = regularMarketTime ? new Date(regularMarketTime * 1000).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York', timeZoneName: 'short' }) : '';
+    if (marketState === 'REGULAR') {
+      msClass = 'open';
+      msText = '\uD83D\uDFE2 Market Open \u2014 Live Data';
+    } else if (marketState === 'PRE') {
+      msClass = 'pre';
+      msText = '\uD83D\uDFE1 Pre-Market \u2014 Options data from last close';
+    } else if (marketState === 'POST' || marketState === 'POSTPOST') {
+      msClass = 'pre';
+      msText = '\uD83D\uDFE1 Market Closed \u2014 Data as of ' + fmtTime;
+    } else {
+      msClass = 'closed';
+      msText = '\u26AA Market Closed \u2014 Data as of ' + fmtTime;
+    }
+    msBadge.className = 'market-status-badge ' + msClass;
+    msBadge.textContent = msText;
+    document.querySelector('.results-ticker').appendChild(msBadge);
   }
 
   // Left panel
@@ -2197,6 +2241,8 @@ async function searchTicker(symbol) {
   document.getElementById('side-panel').innerHTML = '';
   document.getElementById('results-symbol').textContent = symbol;
   document.getElementById('results-price').textContent = '';
+  const oldEb = document.getElementById('earnings-header-badge'); if (oldEb) oldEb.remove();
+  const oldMs = document.getElementById('market-status-badge'); if (oldMs) oldMs.remove();
 
   try {
     const result = await analyzeOptionsStrategies(symbol);
