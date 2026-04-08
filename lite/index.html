@@ -603,6 +603,43 @@ body {
 .opt-badge.bearish { background: #f4433620; color: var(--red); }
 .opt-badge.neutral { background: #FF980020; color: var(--orange); }
 .opt-badge.volatility { background: #2196F320; color: var(--blue); }
+.earnings-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: #FF980025;
+  color: var(--orange);
+  border: 1px solid #FF980040;
+  margin-left: 10px;
+  animation: earningsPulse 2s ease-in-out infinite;
+}
+@keyframes earningsPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+.earnings-warning {
+  background: #FF980015;
+  border: 1px solid #FF980030;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin: 8px 0;
+  font-size: 12px;
+  color: var(--orange);
+  line-height: 1.4;
+}
+.earnings-card-badge {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: #FF980020;
+  color: var(--orange);
+  margin-left: 4px;
+}
 
 .card-legs {
   font-size: 11px;
@@ -1494,6 +1531,14 @@ async function analyzeOptionsStrategies(symbol) {
   const S = quote.regularMarketPrice || 0;
   if (!S) throw new Error('No price data');
 
+  // Earnings Calendar — extract earningsTimestamp
+  const earningsTs = quote.earningsTimestamp || quote.earningsTimestampStart || null;
+  let daysUntilEarnings = null;
+  if (earningsTs) {
+    daysUntilEarnings = Math.ceil((earningsTs * 1000 - Date.now()) / (1000 * 60 * 60 * 24));
+    if (daysUntilEarnings < 0) daysUntilEarnings = null; // past earnings, ignore
+  }
+
   const expirations = data.expirationDates || [];
   const now = Math.floor(Date.now() / 1000);
   const targetExps = expirations.filter(e => { const dte = (e - now) / 86400; return dte >= 15 && dte <= 60; });
@@ -1625,10 +1670,25 @@ async function analyzeOptionsStrategies(symbol) {
     });
   } catch (e) { }
 
-  // Score
+  // Score — with earnings proximity adjustments
+  const earningsInRange = daysUntilEarnings !== null && daysUntilEarnings >= 0 && daysUntilEarnings <= 14;
   allStrategies.forEach(s => {
     const scores = scoreStrategy(s, ivRank);
-    s.score = scores.total; s.probDisplay = scores.prob; s.rrDisplay = scores.rr; s.evDisplay = scores.ev; s.scoreComponents = scores.components;
+    let adj = 0;
+    s.earningsFlag = null;
+    if (earningsInRange && s.dte && daysUntilEarnings <= s.dte) {
+      if (s.name === 'Straddle' || s.name === 'Strangle') {
+        adj = 5;
+        s.earningsFlag = 'boost';
+      } else if (s.name === 'Iron Condor' || s.name === 'Butterfly') {
+        adj = -5;
+        s.earningsFlag = 'penalized';
+      } else if (s.name === 'Covered Call') {
+        s.earningsFlag = 'warning';
+      }
+    }
+    s.score = Math.max(0, Math.min(100, scores.total + adj));
+    s.probDisplay = scores.prob; s.rrDisplay = scores.rr; s.evDisplay = scores.ev; s.scoreComponents = scores.components;
   });
   allStrategies.sort((a, b) => b.score - a.score);
 
@@ -1640,7 +1700,7 @@ async function analyzeOptionsStrategies(symbol) {
     if (!seen.has(s.name)) { unique.push(s); seen.set(s.name, 1); }
   });
 
-  return { strategies: unique, ivRank, avgIV, ivSource, price: S, chainData: allChainData, expirations, symbol };
+  return { strategies: unique, ivRank, avgIV, ivSource, price: S, chainData: allChainData, expirations, symbol, daysUntilEarnings };
 }
 
 // ===== STRATEGY EXPLANATIONS =====
@@ -1669,10 +1729,21 @@ function isStrategyLocked(index) {
 
 function renderResults(result) {
   lastResult = result;
-  const { strategies, ivRank, avgIV, ivSource, price, chainData, symbol } = result;
+  const { strategies, ivRank, avgIV, ivSource, price, chainData, symbol, daysUntilEarnings } = result;
 
   document.getElementById('results-symbol').textContent = symbol;
   document.getElementById('results-price').textContent = '$' + price.toFixed(2);
+
+  // Earnings badge in header
+  const existingBadge = document.getElementById('earnings-header-badge');
+  if (existingBadge) existingBadge.remove();
+  if (daysUntilEarnings !== null && daysUntilEarnings >= 0 && daysUntilEarnings <= 14) {
+    const badge = document.createElement('span');
+    badge.id = 'earnings-header-badge';
+    badge.className = 'earnings-badge';
+    badge.textContent = '\u26A1 Earnings in ' + daysUntilEarnings + (daysUntilEarnings === 1 ? ' day' : ' days');
+    document.querySelector('.results-ticker').appendChild(badge);
+  }
 
   // Left panel
   const stratPanel = document.getElementById('strat-panel');
@@ -1766,9 +1837,13 @@ function renderStrategyCards(strategies) {
       </div>`;
     }
 
+    const earningsBadge = s.earningsFlag === 'boost' ? '<span class="earnings-card-badge">\u26A1 IV Crush Play</span>'
+      : s.earningsFlag === 'penalized' ? '<span class="earnings-card-badge">\u26A0 Earnings Risk</span>'
+      : s.earningsFlag === 'warning' ? '<span class="earnings-card-badge">\u26A0 Assignment Risk</span>' : '';
+
     return `<div class="strat-card" onclick="showDetail(${i})">
       <div class="card-head">
-        <div style="display:flex;align-items:center"><span class="card-rank">${i + 1}</span><span class="card-name">${s.name}<span class="card-exp">${s.expirationDate || ''} (${s.dte || '?'}d)</span></span><span class="opt-badge ${s.sentiment}">${s.sentiment}</span></div>
+        <div style="display:flex;align-items:center;flex-wrap:wrap"><span class="card-rank">${i + 1}</span><span class="card-name">${s.name}<span class="card-exp">${s.expirationDate || ''} (${s.dte || '?'}d)</span></span><span class="opt-badge ${s.sentiment}">${s.sentiment}</span>${earningsBadge}</div>
         <span class="card-score" style="color:${scoreColor}">${s.score}</span>
       </div>
       <div class="card-legs">${legsText}</div>
@@ -1889,6 +1964,22 @@ function showDetail(idx) {
   html += `<div class="modal-section"><h4>Breakeven${s.breakeven.length > 1 ? 's' : ''}</h4><div class="breakevens">`;
   s.breakeven.forEach(b => { html += `<span class="breakeven-tag">$${b.toFixed(2)}</span>`; });
   html += '</div></div>';
+
+  // Earnings warning in detail modal
+  if (s.earningsFlag && lastResult.daysUntilEarnings !== null) {
+    const eDays = lastResult.daysUntilEarnings;
+    let earningsMsg = '';
+    if (s.earningsFlag === 'boost') {
+      earningsMsg = '\u26A1 <strong>Earnings in ' + eDays + ' days — IV Crush Play.</strong> Straddles/strangles benefit from elevated pre-earnings IV. Consider closing before the announcement to capture the IV premium, or hold through for a big move.';
+    } else if (s.earningsFlag === 'penalized') {
+      earningsMsg = '\u26A0 <strong>Earnings in ' + eDays + ' days — Movement Risk.</strong> Iron condors and butterflies profit from range-bound price action. An earnings surprise could blow through your strikes. Score penalized by 5 pts.';
+    } else if (s.earningsFlag === 'warning') {
+      earningsMsg = '\u26A0 <strong>Earnings in ' + eDays + ' days — Early Assignment Risk.</strong> Covered call holders face higher risk of early assignment before an earnings event, especially if the stock is trading near the sold strike.';
+    }
+    if (earningsMsg) {
+      html += `<div class="modal-section"><h4>Earnings Alert</h4><div class="earnings-warning">${earningsMsg}</div></div>`;
+    }
+  }
 
   html += `<div class="modal-section"><h4>Strategy Overview</h4><p class="explanation">${strategyExplanations[s.name] || 'A multi-leg options strategy.'}</p></div>`;
 
