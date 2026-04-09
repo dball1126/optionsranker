@@ -249,6 +249,58 @@ body {
 }
 .cta-btn.primary:hover { background: var(--accent2); transform: translateY(-1px); }
 
+/* ===== RECENT TICKERS ===== */
+.recent-tickers {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 14px auto 4px;
+  max-width: 560px;
+  flex-wrap: wrap;
+}
+.recent-tickers .recent-label {
+  font-size: 11px;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+.recent-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.recent-chip {
+  background: var(--bg3);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+.recent-chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: translateY(-1px);
+}
+.recent-clear {
+  background: transparent;
+  border: none;
+  color: var(--dimmer);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 2px 6px;
+  line-height: 1;
+  transition: color 0.15s;
+}
+.recent-clear:hover { color: var(--red); }
+
 /* ===== MARKET PULSE ===== */
 .market-pulse {
   background: var(--bg2);
@@ -1080,6 +1132,11 @@ body {
   <div class="search-container">
     <span class="search-icon">&#128269;</span>
     <input type="text" class="search-box" id="search-landing" placeholder="Search any ticker... (e.g. AAPL)" autocomplete="off">
+  </div>
+  <div id="recent-tickers" class="recent-tickers" style="display:none;">
+    <span class="recent-label">Recent:</span>
+    <div class="recent-chips" id="recent-chips"></div>
+    <button class="recent-clear" id="recent-clear" title="Clear recent tickers">&#10005;</button>
   </div>
   <div class="features">
     <div class="feature"><span class="check">&#10003;</span> Probability of profit</div>
@@ -2367,6 +2424,8 @@ async function searchTicker(symbol) {
   symbol = symbol.toUpperCase().trim();
   if (!symbol) return;
 
+  saveRecentTicker(symbol);
+
   document.getElementById('landing').style.display = 'none';
   document.getElementById('results').classList.add('active');
 
@@ -2398,6 +2457,54 @@ document.getElementById('search-landing').addEventListener('keydown', (e) => {
 document.getElementById('search-results').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') { searchTicker(e.target.value); e.target.value = ''; }
 });
+
+// ===== RECENT TICKERS =====
+const RECENT_TICKERS_KEY = 'optionsranker_recent_tickers';
+const RECENT_TICKERS_MAX = 8;
+
+function getRecentTickers() {
+  try {
+    const raw = localStorage.getItem(RECENT_TICKERS_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.filter(t => typeof t === 'string') : [];
+  } catch (e) { return []; }
+}
+
+function saveRecentTicker(symbol) {
+  if (!symbol || typeof symbol !== 'string') return;
+  const clean = symbol.toUpperCase().trim();
+  if (!/^[A-Z0-9.\-]{1,8}$/.test(clean)) return;
+  try {
+    const current = getRecentTickers().filter(t => t !== clean);
+    current.unshift(clean);
+    const trimmed = current.slice(0, RECENT_TICKERS_MAX);
+    localStorage.setItem(RECENT_TICKERS_KEY, JSON.stringify(trimmed));
+    renderRecentTickers();
+  } catch (e) {}
+}
+
+function renderRecentTickers() {
+  const wrap = document.getElementById('recent-tickers');
+  const chipsEl = document.getElementById('recent-chips');
+  if (!wrap || !chipsEl) return;
+  const recents = getRecentTickers();
+  if (recents.length === 0) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'flex';
+  chipsEl.innerHTML = recents.map(t =>
+    `<button class="recent-chip" data-ticker="${t}">${t}</button>`
+  ).join('');
+  chipsEl.querySelectorAll('.recent-chip').forEach(btn => {
+    btn.addEventListener('click', () => searchTicker(btn.dataset.ticker));
+  });
+}
+
+document.getElementById('recent-clear')?.addEventListener('click', () => {
+  try { localStorage.removeItem(RECENT_TICKERS_KEY); } catch (e) {}
+  renderRecentTickers();
+});
+
+renderRecentTickers();
 
 // ===== AUTH =====
 const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
