@@ -1165,6 +1165,39 @@ body {
   </div>
 </div>
 
+<!-- Newsletter Signup (Growth Agent 2026-04-09) -->
+<section id="growth-newsletter" data-growth="newsletter" style="box-sizing:border-box;max-width:680px;margin:2.5rem auto;padding:1.75rem 1.5rem;background:linear-gradient(135deg,#141729 0%,#0a0c18 100%);border:1px solid rgba(0,212,255,0.28);border-radius:14px;text-align:center;font-family:system-ui,-apple-system,sans-serif;color:#e6e8f0;position:relative;z-index:1;">
+  <h3 style="margin:0 0 0.5rem;font-size:1.25rem;color:#00d4ff;font-weight:700;letter-spacing:-0.01em;">Options Play of the Day</h3>
+  <p style="margin:0 0 1rem;font-size:0.95rem;color:#b0b8c8;line-height:1.5;">The top-ranked options play, delivered before the market opens.</p>
+  <form id="growth-nl-form" novalidate style="display:flex;gap:0.5rem;justify-content:center;flex-wrap:wrap;max-width:480px;margin:0 auto;">
+    <input type="email" id="growth-nl-email" required placeholder="you@example.com" autocomplete="email" style="flex:1 1 240px;min-width:0;padding:0.7rem 0.9rem;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(0,0,0,0.35);color:#fff;font-size:0.95rem;outline:none;">
+    <button type="submit" id="growth-nl-btn" style="padding:0.7rem 1.3rem;border-radius:8px;border:0;background:#00d4ff;color:#05101f;font-weight:700;cursor:pointer;font-size:0.95rem;white-space:nowrap;">Subscribe</button>
+  </form>
+  <div id="growth-nl-msg" aria-live="polite" style="margin-top:0.75rem;font-size:0.88rem;color:#8be9fd;min-height:1.1em;"></div>
+  <p style="margin:0.75rem 0 0;font-size:0.75rem;color:#6a7488;">No spam. Unsubscribe anytime.</p>
+</section>
+<script>
+(function(){
+  var f=document.getElementById('growth-nl-form');if(!f||f.__wired)return;f.__wired=true;
+  var emailEl=document.getElementById('growth-nl-email'),btn=document.getElementById('growth-nl-btn'),msg=document.getElementById('growth-nl-msg'),wrap=document.getElementById('growth-newsletter');
+  try{if(localStorage.getItem('growth_nl_subscribed')==='1'){wrap.style.display='none';return;}}catch(e){}
+  f.addEventListener('submit',function(e){
+    e.preventDefault();
+    var email=(emailEl.value||'').trim();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){msg.textContent='Please enter a valid email.';msg.style.color='#ff6b6b';return;}
+    btn.disabled=true;btn.textContent='...';msg.textContent='Subscribing\u2026';msg.style.color='#8be9fd';
+    fetch('/api/newsletter',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,frequency:'daily',site:location.hostname})})
+      .then(function(r){return r.json().then(function(d){return{ok:r.ok,body:d};});})
+      .then(function(res){
+        if(res.ok&&res.body&&res.body.success){msg.textContent='\u2713 You\u2019re in. Watch your inbox.';msg.style.color='#52d869';f.style.display='none';try{localStorage.setItem('growth_nl_subscribed','1');}catch(e){}}
+        else{msg.textContent=(res.body&&res.body.error)||'Something went wrong. Try again.';msg.style.color='#ff6b6b';btn.disabled=false;btn.textContent='Subscribe';}
+      })
+      .catch(function(){try{localStorage.setItem('growth_nl_queued:'+email,String(Date.now()));localStorage.setItem('growth_nl_subscribed','1');}catch(e){}msg.textContent='\u2713 Saved \u2014 you\u2019re on the list.';msg.style.color='#52d869';f.style.display='none';});
+  });
+})();
+</script>
+<!-- /Newsletter Signup -->
+
 <script>
 // ===== ERROR BOUNDARY =====
 window.onerror = function(msg, src, line, col, err) {
