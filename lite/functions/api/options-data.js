@@ -68,13 +68,14 @@ export async function onRequest(context) {
       return Response.json({ error: 'userId required' }, { status: 400, headers: CORS });
     }
     const rows = await db.prepare(
-      'SELECT id, symbol, strategy_name, legs, entry_price, score, iv_at_entry, notes, created_at FROM saved_strategies WHERE user_id = ? ORDER BY created_at DESC LIMIT 50'
+      'SELECT id, symbol, strategy_name, legs, entry_price, score, iv_at_entry, notes, created_at, exit_rules, target_exit_date, exit_explanation FROM saved_strategies WHERE user_id = ? ORDER BY created_at DESC LIMIT 50'
     ).bind(userId).all();
 
     return Response.json({
       strategies: (rows.results || []).map(r => ({
         ...r,
         legs: JSON.parse(r.legs || '[]'),
+        exit_rules: r.exit_rules ? JSON.parse(r.exit_rules) : null,
       }))
     }, { headers: CORS });
   }
@@ -85,14 +86,21 @@ export async function onRequest(context) {
     try { body = await context.request.json(); } catch {
       return Response.json({ error: 'Invalid JSON' }, { status: 400, headers: CORS });
     }
-    const { userId, symbol, strategy_name, legs, entry_price, score, iv_at_entry, notes } = body;
+    const { userId, symbol, strategy_name, legs, entry_price, score, iv_at_entry, notes,
+            exit_rules, target_exit_date, exit_explanation } = body;
     if (!userId || !symbol || !strategy_name || !legs) {
       return Response.json({ error: 'userId, symbol, strategy_name, legs required' }, { status: 400, headers: CORS });
     }
     const result = await db.prepare(
-      `INSERT INTO saved_strategies (user_id, symbol, strategy_name, legs, entry_price, score, iv_at_entry, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(userId, symbol.toUpperCase(), strategy_name, JSON.stringify(legs), entry_price || null, score || null, iv_at_entry || null, notes || '').run();
+      `INSERT INTO saved_strategies (user_id, symbol, strategy_name, legs, entry_price, score, iv_at_entry, notes, exit_rules, target_exit_date, exit_explanation)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(
+      userId, symbol.toUpperCase(), strategy_name, JSON.stringify(legs),
+      entry_price || null, score || null, iv_at_entry || null, notes || '',
+      exit_rules ? (typeof exit_rules === 'string' ? exit_rules : JSON.stringify(exit_rules)) : null,
+      target_exit_date || null,
+      exit_explanation || null
+    ).run();
 
     return Response.json({ saved: true, id: result.meta?.last_row_id }, { headers: CORS });
   }

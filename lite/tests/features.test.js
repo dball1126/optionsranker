@@ -116,6 +116,49 @@ t('ImpliedMove: falls back to IV estimate when straddle unavailable', () => {
 });
 
 // ─────────────────────────────────────────────────────────────
+// Exit Plan feature (update-feature — 2026-04-10)
+// ─────────────────────────────────────────────────────────────
+t('ExitPlan: exit-plan.js script loaded', () => {
+  assert.ok(HTML.includes('<script src="exit-plan.js">'), 'exit-plan.js script tag missing');
+});
+
+t('ExitPlan: card-exit-row injected with testid', () => {
+  assert.ok(HTML.includes('class="card-exit-row"'), 'card-exit-row class missing');
+  assert.ok(HTML.includes('data-testid="card-exit-plan"'), 'card-exit-plan testid missing');
+  assert.ok(HTML.includes('s.exitPlan.holdDays'), 'holdDays template missing');
+  assert.ok(HTML.includes('s.exitPlan.profitTarget'), 'profitTarget template missing');
+});
+
+t('ExitPlan: modal exit-plan-section injected with testid', () => {
+  assert.ok(HTML.includes('data-testid="exit-plan-section"'), 'exit-plan-section testid missing');
+  assert.ok(HTML.includes('class="modal-section exit-plan-section"'), 'exit-plan-section class missing');
+  ['Profit Target', 'Stop Loss', 'Time Stop'].forEach(label => {
+    assert.ok(HTML.includes(label), `${label} label missing in modal`);
+  });
+});
+
+t('ExitPlan: scoring loop attaches s.exitPlan via window.computeExitPlan', () => {
+  assert.ok(HTML.includes('window.computeExitPlan'), 'window.computeExitPlan reference missing');
+  assert.ok(HTML.includes('s.exitPlan = '), 's.exitPlan assignment missing');
+});
+
+t('ExitPlan: market pulse cache exposed for engine', () => {
+  assert.ok(HTML.includes('window._lastMarketPulse = '), '_lastMarketPulse cache missing');
+});
+
+t('ExitPlan: saveStrategy round-trips exit_rules + target_exit_date', () => {
+  assert.ok(HTML.includes('exit_rules:'), 'saveStrategy missing exit_rules field');
+  assert.ok(HTML.includes('target_exit_date:'), 'saveStrategy missing target_exit_date field');
+  assert.ok(HTML.includes('exit_explanation:'), 'saveStrategy missing exit_explanation field');
+});
+
+t('ExitPlan: CSS classes defined for card row and modal triggers', () => {
+  ['.card-exit-row', '.card-exit-badge', '.exit-plan-section', '.exit-trigger.profit', '.exit-trigger.stop', '.exit-trigger.time', '.exit-factors'].forEach(sel => {
+    assert.ok(HTML.includes(sel), `CSS selector ${sel} missing`);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
 // Runner
 // ─────────────────────────────────────────────────────────────
 (async () => {

@@ -1228,6 +1228,46 @@ body {
   .modal { width: 98%; }
   .upgrade-modal, .signin-modal { padding: 24px 20px; }
 }
+
+/* ===== Exit Plan ===== */
+.card-exit-row {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  font-size: 10px; color: var(--dim);
+  padding: 6px 0 0; margin-top: 6px;
+  border-top: 1px dashed var(--border);
+}
+.card-exit-badge {
+  background: var(--bg3); color: var(--accent);
+  padding: 2px 8px; border-radius: 10px; font-weight: 700; font-size: 10px;
+}
+.card-exit-target { color: var(--green); font-weight: 600; }
+.card-exit-stop { color: var(--red); font-weight: 600; }
+.card-exit-date { margin-left: auto; color: var(--dimmer); }
+
+.exit-plan-section .exit-dates {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px;
+}
+.exit-date-item {
+  background: var(--bg3); border-radius: 8px; padding: 8px; text-align: center;
+}
+.exit-date-item .label { font-size: 9px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.5px; }
+.exit-date-item .value { font-size: 13px; font-weight: 700; color: var(--text); margin-top: 2px; }
+.exit-triggers {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px;
+}
+.exit-trigger { background: var(--bg3); border-radius: 8px; padding: 10px; text-align: center; }
+.exit-trigger .et-label { font-size: 9px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.5px; }
+.exit-trigger .et-val { font-size: 14px; font-weight: 700; margin-top: 2px; }
+.exit-trigger.profit .et-val { color: var(--green); }
+.exit-trigger.stop .et-val { color: var(--red); }
+.exit-trigger.time .et-val { color: var(--text); }
+.exit-explanation { font-size: 11px; color: var(--dim); line-height: 1.5; margin: 8px 0; }
+.exit-factors .ef-title { font-size: 10px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.exit-factors ul { list-style: none; padding: 0; margin: 0; }
+.exit-factors li { font-size: 11px; padding: 3px 0; color: var(--dim); }
+.exit-factors li.ef-warn { color: var(--orange); }
+.exit-factors li.ef-warn::before { content: '\26A0  '; }
+.exit-factors li.ef-info::before { content: '\2022  '; color: var(--dimmer); }
 </style>
 </head>
 <body>
@@ -1378,6 +1418,7 @@ body {
 </script>
 <!-- /Newsletter Signup -->
 
+<script src="exit-plan.js"></script>
 <script>
 // ===== ERROR BOUNDARY =====
 window.onerror = function(msg, src, line, col, err) {
@@ -2016,6 +2057,11 @@ async function analyzeOptionsStrategies(symbol) {
     }
     s.score = Math.max(0, Math.min(100, scores.total + adj));
     s.probDisplay = scores.prob; s.rrDisplay = scores.rr; s.evDisplay = scores.ev; s.scoreComponents = scores.components;
+    // Attach dynamic exit plan
+    try {
+      const mp = (window._lastMarketPulse && (Date.now() - window._lastMarketPulse.computedAt) < 6 * 3600 * 1000) ? window._lastMarketPulse : null;
+      s.exitPlan = window.computeExitPlan ? window.computeExitPlan(s, ivRank, mp, daysUntilEarnings, new Date()) : null;
+    } catch (e) { s.exitPlan = null; }
   });
   allStrategies.sort((a, b) => b.score - a.score);
 
@@ -2281,6 +2327,12 @@ function renderStrategyCards(strategies) {
         <div class="card-greek">Theta <span>${s.greeks.theta.toFixed(2)}</span></div>
         <div class="card-greek">Vega <span>${s.greeks.vega.toFixed(2)}</span></div>
       </div>
+      ${s.exitPlan ? `<div class="card-exit-row" data-testid="card-exit-plan">
+        <div class="card-exit-badge">Hold ~${s.exitPlan.holdDays}d</div>
+        <div class="card-exit-target">Target +$${s.exitPlan.profitTarget.toFixed(0)}</div>
+        <div class="card-exit-stop">${s.exitPlan.stopLoss != null ? 'Stop \u2212$' + Math.abs(s.exitPlan.stopLoss).toFixed(0) : 'No stop'}</div>
+        <div class="card-exit-date">By ${s.exitPlan.targetExitDate}</div>
+      </div>` : ''}
       ${s.scoreComponents ? renderScoreBreakdown(s.scoreComponents) : ''}
     </div>`;
   }).join('');
@@ -2386,6 +2438,32 @@ function showDetail(idx) {
   html += `<div class="modal-section"><h4>Breakeven${s.breakeven.length > 1 ? 's' : ''}</h4><div class="breakevens">`;
   s.breakeven.forEach(b => { html += `<span class="breakeven-tag">$${b.toFixed(2)}</span>`; });
   html += '</div></div>';
+
+  // Exit Plan section
+  if (s.exitPlan) {
+    const ep = s.exitPlan;
+    html += `<div class="modal-section exit-plan-section" data-testid="exit-plan-section">
+      <h4>Exit Plan</h4>
+      <div class="exit-dates">
+        <div class="exit-date-item"><div class="label">Buy</div><div class="value">${ep.entryDate}</div></div>
+        <div class="exit-date-item"><div class="label">Target Sell</div><div class="value">${ep.targetExitDate}</div></div>
+        <div class="exit-date-item"><div class="label">Hold</div><div class="value">~${ep.holdDays}d</div></div>
+      </div>
+      <div class="exit-triggers">
+        <div class="exit-trigger profit"><div class="et-label">Profit Target</div><div class="et-val">+$${ep.profitTarget.toFixed(2)}</div></div>
+        <div class="exit-trigger stop"><div class="et-label">Stop Loss</div><div class="et-val">${ep.stopLoss != null ? '\u2212$' + Math.abs(ep.stopLoss).toFixed(2) : 'n/a'}</div></div>
+        <div class="exit-trigger time"><div class="et-label">Time Stop</div><div class="et-val">${ep.timeStopDTE} DTE</div></div>
+      </div>
+      <p class="exit-explanation">${ep.explanation}</p>
+      ${ep.dynamicFactors && ep.dynamicFactors.length ? `
+        <div class="exit-factors">
+          <div class="ef-title">Dynamic Factors</div>
+          <ul>
+            ${ep.dynamicFactors.map(f => `<li class="ef-${f.level}">${f.text}</li>`).join('')}
+          </ul>
+        </div>` : ''}
+    </div>`;
+  }
 
   // Earnings warning in detail modal
   if (s.earningsFlag && lastResult.daysUntilEarnings !== null) {
@@ -2563,6 +2641,15 @@ async function saveStrategy(strategy) {
         legs: strategy.legs,
         entry_price: strategy.legs.reduce((sum, l) => { const mult = (l.action === 'Buy' || l.action === 'Hold') ? -1 : 1; return sum + l.price * mult * l.qty * (l.type === 'Stock' ? 1 : 100); }, 0),
         score: strategy.score, iv_at_entry: strategy.iv || lastResult.avgIV,
+        exit_rules: strategy.exitPlan ? {
+          profitTarget: strategy.exitPlan.profitTarget,
+          stopLoss: strategy.exitPlan.stopLoss,
+          timeStopDTE: strategy.exitPlan.timeStopDTE,
+          entryDate: strategy.exitPlan.entryDate,
+          holdDays: strategy.exitPlan.holdDays,
+        } : null,
+        target_exit_date: strategy.exitPlan ? strategy.exitPlan.targetExitDate : null,
+        exit_explanation: strategy.exitPlan ? strategy.exitPlan.explanation : null,
       })
     });
     const data = await res.json();
@@ -2602,6 +2689,12 @@ function renderSavedSection() {
         <span>IV at entry: ${s.iv_at_entry ? (s.iv_at_entry * 100).toFixed(1) + '%' : '\u2014'}</span>
         <span>${new Date(s.created_at).toLocaleDateString()}</span>
       </div>
+      ${s.exit_rules ? `<div style="display:flex;gap:10px;font-size:10px;margin-top:4px;padding-top:4px;border-top:1px dashed var(--border)">
+        <span style="color:var(--accent)">Hold ~${s.exit_rules.holdDays || '?'}d</span>
+        <span style="color:var(--green)">Target +$${(s.exit_rules.profitTarget || 0).toFixed(0)}</span>
+        <span style="color:var(--red)">${s.exit_rules.stopLoss != null ? 'Stop \u2212$' + Math.abs(s.exit_rules.stopLoss).toFixed(0) : 'No stop'}</span>
+        ${s.target_exit_date ? `<span style="color:var(--dimmer);margin-left:auto">By ${s.target_exit_date}</span>` : ''}
+      </div>` : ''}
     </div>`;
   });
   html += '</div>';
@@ -3146,6 +3239,8 @@ async function loadMarketPulse() {
 
     // Compute overall score (0-3 signals bullish)
     const bullishCount = (spyAbove200 ? 1 : 0) + (vixFallingAfterSpike || (!vixSpike && vixCurrent < 20) ? 1 : 0) + (breadthImproving ? 1 : 0);
+    // Cache for exit plan engine
+    window._lastMarketPulse = { bullishCount, computedAt: Date.now() };
     const scoreColor = bullishCount >= 3 ? 'var(--green)' : bullishCount >= 2 ? 'var(--orange)' : 'var(--red)';
     const scoreFillColor = bullishCount >= 3 ? '#4caf50' : bullishCount >= 2 ? '#FF9800' : '#f44336';
     const overallLabel = bullishCount >= 3 ? 'Conditions favor re-entry — all 3 signals aligned.'
