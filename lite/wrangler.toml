@@ -1,11 +1,11 @@
-name = "options-ranker"
+name = "optionsranker"
 compatibility_date = "2025-01-01"
 pages_build_output_dir = "./"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "options-ranker-db"
-database_id = "PLACEHOLDER"
+database_name = "optionsranker-db"
+database_id = "c581ac6e-f80f-4c5f-860e-55ecab40b7ea"
 
 # [vars]
 # Non-secret config values go here. Example:

@@ -301,6 +301,102 @@ body {
 }
 .recent-clear:hover { color: var(--red); }
 
+/* ===== WATCHLIST ===== */
+.watchlist {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px 24px;
+  margin: 0 auto 32px;
+  max-width: 720px;
+  text-align: left;
+}
+.watchlist-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.watchlist-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.3px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.watchlist-title .star-ico { color: var(--accent); font-size: 16px; }
+.watchlist-clear {
+  background: transparent;
+  border: none;
+  color: var(--dimmer);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.watchlist-clear:hover { color: var(--red); }
+.watchlist-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.watchlist-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.watchlist-item:hover {
+  border-color: var(--accent);
+  transform: translateX(2px);
+}
+.wl-symbol { font-size: 14px; font-weight: 800; color: var(--text); letter-spacing: 0.5px; }
+.wl-meta { font-size: 11px; color: var(--dim); flex: 1; margin-left: 12px; }
+.wl-remove {
+  background: transparent;
+  border: none;
+  color: var(--dimmer);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 8px;
+  line-height: 1;
+}
+.wl-remove:hover { color: var(--red); }
+.watchlist-empty {
+  font-size: 12px;
+  color: var(--dimmer);
+  text-align: center;
+  padding: 8px 0;
+}
+
+/* Star toggle button in results header */
+.star-toggle {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--dimmer);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.star-toggle:hover { border-color: var(--accent); color: var(--accent); }
+.star-toggle.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+
 /* ===== MARKET PULSE ===== */
 .market-pulse {
   background: var(--bg2);
@@ -572,6 +668,26 @@ body {
 }
 .iv-fill { height: 100%; border-radius: 3px; transition: width 0.4s; }
 .iv-hint { font-size: 11px; color: var(--dimmer); }
+.iv-implied-move {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.im-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.im-label {
+  font-size: 10px;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.im-value { font-size: 14px; font-weight: 700; color: var(--text); }
+.im-range { font-size: 11px; color: var(--dimmer); }
+.im-range strong { color: var(--text); font-weight: 700; }
 
 /* Controls */
 .strat-controls {
@@ -1137,6 +1253,13 @@ body {
     <span class="recent-label">Recent:</span>
     <div class="recent-chips" id="recent-chips"></div>
     <button class="recent-clear" id="recent-clear" title="Clear recent tickers">&#10005;</button>
+  </div>
+  <div id="watchlist" class="watchlist" style="display:none;">
+    <div class="watchlist-header">
+      <div class="watchlist-title"><span class="star-ico">&#9733;</span> Watchlist</div>
+      <button class="watchlist-clear" id="watchlist-clear" title="Clear watchlist">Clear</button>
+    </div>
+    <div class="watchlist-items" id="watchlist-items"></div>
   </div>
   <div class="features">
     <div class="feature"><span class="check">&#10003;</span> Probability of profit</div>
@@ -1904,7 +2027,45 @@ async function analyzeOptionsStrategies(symbol) {
     if (!seen.has(s.name)) { unique.push(s); seen.set(s.name, 1); }
   });
 
-  return { strategies: unique, ivRank, avgIV, ivSource, price: S, chainData: allChainData, expirations, symbol, daysUntilEarnings, marketState, regularMarketTime };
+  // Implied Move — 1-SD expected move by the nearest expiration
+  // Prefer ATM straddle mid (most accurate), fall back to S * avgIV * sqrt(T)
+  const impliedMove = computeImpliedMove(allChainData, S, avgIV, now);
+
+  return { strategies: unique, ivRank, avgIV, ivSource, price: S, chainData: allChainData, expirations, symbol, daysUntilEarnings, marketState, regularMarketTime, impliedMove };
+}
+
+// Compute the implied 1-SD move by the nearest expiration.
+// Returns { dollars, percent, expiration, dte, source } or null.
+function computeImpliedMove(chainData, S, avgIV, nowSec) {
+  if (!chainData || !chainData.length || !S) return null;
+  const nearest = chainData[0];
+  if (!nearest || !nearest.expiration) return null;
+  const dte = Math.max(0, Math.round((nearest.expiration - nowSec) / 86400));
+  if (dte <= 0) return null;
+  const expDate = new Date(nearest.expiration * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+  // ATM straddle method
+  const mid = (c) => c ? ((c.bid || 0) + (c.ask || c.lastPrice || 0)) / 2 || c.lastPrice || 0 : 0;
+  let dollars = null, source = 'iv';
+  const calls = nearest.calls || [];
+  const puts = nearest.puts || [];
+  if (calls.length && puts.length) {
+    const atmCall = calls.reduce((best, c) => Math.abs(c.strike - S) < Math.abs(best.strike - S) ? c : best, calls[0]);
+    const atmPut = puts.reduce((best, p) => Math.abs(p.strike - S) < Math.abs(best.strike - S) ? p : best, puts[0]);
+    const cMid = mid(atmCall), pMid = mid(atmPut);
+    if (cMid > 0 && pMid > 0) {
+      // ATM straddle price approximates the 1-SD move, minus a small calibration factor
+      dollars = (cMid + pMid) * 0.85;
+      source = 'straddle';
+    }
+  }
+  if (dollars === null || !isFinite(dollars) || dollars <= 0) {
+    const T = dte / 365;
+    dollars = S * (avgIV || 0.3) * Math.sqrt(T);
+    source = 'iv';
+  }
+  const percent = (dollars / S) * 100;
+  return { dollars, percent, expiration: nearest.expiration, dte, expDate, source };
 }
 
 // ===== STRATEGY EXPLANATIONS =====
@@ -1936,7 +2097,7 @@ function isStrategyLocked(index) {
 
 function renderResults(result) {
   lastResult = result;
-  const { strategies, ivRank, avgIV, ivSource, price, chainData, symbol, daysUntilEarnings, marketState, regularMarketTime } = result;
+  const { strategies, ivRank, avgIV, ivSource, price, chainData, symbol, daysUntilEarnings, marketState, regularMarketTime, impliedMove } = result;
 
   document.getElementById('results-symbol').textContent = symbol;
   document.getElementById('results-price').textContent = '$' + price.toFixed(2);
@@ -1978,6 +2139,20 @@ function renderResults(result) {
     document.querySelector('.results-ticker').appendChild(msBadge);
   }
 
+  // Watchlist star toggle — add/remove current ticker from watchlist
+  const existingStar = document.getElementById('results-star-toggle');
+  if (existingStar) existingStar.remove();
+  const starBtn = document.createElement('button');
+  starBtn.id = 'results-star-toggle';
+  starBtn.className = 'star-toggle';
+  starBtn.type = 'button';
+  starBtn.addEventListener('click', () => {
+    toggleWatchlist(symbol, { ivRank: Math.round(ivRank), topStrategy: strategies[0]?.name || null });
+    updateStarToggle(symbol);
+  });
+  document.querySelector('.results-ticker').appendChild(starBtn);
+  updateStarToggle(symbol);
+
   // Left panel
   const stratPanel = document.getElementById('strat-panel');
   const ivColor = ivRank < 30 ? 'var(--green)' : ivRank > 70 ? 'var(--red)' : 'var(--orange)';
@@ -1986,11 +2161,25 @@ function renderResults(result) {
 
   let html = '';
 
-  // IV Banner
+  // IV Banner — with Implied Move (expected 1-SD move by nearest expiry)
+  let impliedMoveHtml = '';
+  if (impliedMove && impliedMove.dollars > 0) {
+    const srcLbl = impliedMove.source === 'straddle' ? 'ATM straddle' : 'IV est.';
+    const lo = (price - impliedMove.dollars).toFixed(2);
+    const hi = (price + impliedMove.dollars).toFixed(2);
+    impliedMoveHtml = `<div class="iv-implied-move" data-testid="implied-move">
+      <div class="im-row">
+        <span class="im-label">Implied Move <span style="font-size:8px;color:var(--dimmer)">(${srcLbl})</span></span>
+        <span class="im-value">&plusmn;$${impliedMove.dollars.toFixed(2)} <span style="color:var(--dim);font-weight:600">(&plusmn;${impliedMove.percent.toFixed(1)}%)</span></span>
+      </div>
+      <div class="im-range">Expected range by ${impliedMove.expDate}: <strong>$${lo}</strong> &mdash; <strong>$${hi}</strong></div>
+    </div>`;
+  }
   html += `<div class="iv-banner">
     <div class="iv-row"><span class="iv-label">IV Rank <span style="font-size:8px;color:var(--dimmer)">(${ivSrcLabel})</span></span><span class="iv-value" style="color:${ivColor}">${Math.round(ivRank)}%</span></div>
     <div class="iv-bar"><div class="iv-fill" style="width:${ivRank}%;background:${ivColor}"></div></div>
     <div class="iv-hint">${ivHint} | Avg IV: ${(avgIV * 100).toFixed(1)}%</div>
+    ${impliedMoveHtml}
   </div>`;
 
   // Controls
@@ -2505,6 +2694,117 @@ document.getElementById('recent-clear')?.addEventListener('click', () => {
 });
 
 renderRecentTickers();
+
+// ===== WATCHLIST =====
+const WATCHLIST_KEY = 'optionsranker_watchlist';
+const WATCHLIST_MAX = 20;
+
+function getWatchlist() {
+  try {
+    const raw = localStorage.getItem(WATCHLIST_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.filter(x => x && typeof x.symbol === 'string') : [];
+  } catch (e) { return []; }
+}
+
+function saveWatchlist(list) {
+  try {
+    localStorage.setItem(WATCHLIST_KEY, JSON.stringify(list.slice(0, WATCHLIST_MAX)));
+  } catch (e) {}
+}
+
+function isInWatchlist(symbol) {
+  if (!symbol) return false;
+  const clean = symbol.toUpperCase().trim();
+  return getWatchlist().some(x => x.symbol === clean);
+}
+
+function addToWatchlist(symbol, meta = {}) {
+  if (!symbol || typeof symbol !== 'string') return false;
+  const clean = symbol.toUpperCase().trim();
+  if (!/^[A-Z0-9.\-]{1,8}$/.test(clean)) return false;
+  const current = getWatchlist().filter(x => x.symbol !== clean);
+  current.unshift({
+    symbol: clean,
+    ivRank: typeof meta.ivRank === 'number' ? meta.ivRank : null,
+    topStrategy: meta.topStrategy || null,
+    addedAt: Date.now(),
+  });
+  saveWatchlist(current);
+  renderWatchlist();
+  return true;
+}
+
+function removeFromWatchlist(symbol) {
+  if (!symbol) return;
+  const clean = symbol.toUpperCase().trim();
+  const next = getWatchlist().filter(x => x.symbol !== clean);
+  saveWatchlist(next);
+  renderWatchlist();
+}
+
+function toggleWatchlist(symbol, meta = {}) {
+  if (isInWatchlist(symbol)) {
+    removeFromWatchlist(symbol);
+    return false;
+  }
+  addToWatchlist(symbol, meta);
+  return true;
+}
+
+function updateStarToggle(symbol) {
+  const btn = document.getElementById('results-star-toggle');
+  if (!btn) return;
+  if (isInWatchlist(symbol)) {
+    btn.classList.add('active');
+    btn.innerHTML = '\u2605 Watching';
+    btn.title = 'Remove from watchlist';
+  } else {
+    btn.classList.remove('active');
+    btn.innerHTML = '\u2606 Watch';
+    btn.title = 'Add to watchlist';
+  }
+}
+
+function renderWatchlist() {
+  const wrap = document.getElementById('watchlist');
+  const listEl = document.getElementById('watchlist-items');
+  if (!wrap || !listEl) return;
+  const items = getWatchlist();
+  if (items.length === 0) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  listEl.innerHTML = items.map(it => {
+    const metaBits = [];
+    if (typeof it.ivRank === 'number') metaBits.push('IV Rank ' + it.ivRank + '%');
+    if (it.topStrategy) metaBits.push(it.topStrategy);
+    const meta = metaBits.length ? metaBits.join(' \u00B7 ') : 'Click to analyze';
+    return `<div class="watchlist-item" data-ticker="${it.symbol}">
+      <span class="wl-symbol">${it.symbol}</span>
+      <span class="wl-meta">${meta}</span>
+      <button class="wl-remove" data-remove="${it.symbol}" title="Remove">&#10005;</button>
+    </div>`;
+  }).join('');
+  listEl.querySelectorAll('.watchlist-item').forEach(el => {
+    el.addEventListener('click', (e) => {
+      if (e.target.classList.contains('wl-remove')) return;
+      searchTicker(el.dataset.ticker);
+    });
+  });
+  listEl.querySelectorAll('.wl-remove').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      removeFromWatchlist(btn.dataset.remove);
+    });
+  });
+}
+
+document.getElementById('watchlist-clear')?.addEventListener('click', () => {
+  try { localStorage.removeItem(WATCHLIST_KEY); } catch (e) {}
+  renderWatchlist();
+});
+
+renderWatchlist();
 
 // ===== AUTH =====
 const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
