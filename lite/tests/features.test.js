@@ -159,6 +159,55 @@ t('ExitPlan: CSS classes defined for card row and modal triggers', () => {
 });
 
 // ─────────────────────────────────────────────────────────────
+// Timing Optimizer feature (update-feature — 2026-04-10)
+// ─────────────────────────────────────────────────────────────
+t('TimingOptimizer: timing-optimizer.js script loaded', () => {
+  assert.ok(HTML.includes('<script src="timing-optimizer.js">'), 'timing-optimizer.js script tag missing');
+});
+
+t('TimingOptimizer: Optimize Timing button + section placeholder', () => {
+  assert.ok(HTML.includes('id="optimize-btn"'), 'optimize-btn id missing');
+  assert.ok(HTML.includes('openTimingOptimizer(window._modalStrategy)'), 'openTimingOptimizer call missing');
+  assert.ok(HTML.includes('id="timing-optimizer-section"'), 'timing-optimizer-section placeholder missing');
+});
+
+t('TimingOptimizer: core SPA functions defined', () => {
+  ['function openTimingOptimizer', 'function closeTimingOptimizer', 'function renderTimingOptimizerCards', 'function renderTimingCard', 'async function saveOptimizedPlan'].forEach(sig => {
+    assert.ok(HTML.includes(sig), `${sig} missing`);
+  });
+});
+
+t('TimingOptimizer: window.optimizeTimings reference', () => {
+  assert.ok(HTML.includes('window.optimizeTimings'), 'window.optimizeTimings not called');
+});
+
+t('TimingOptimizer: panel and card data-testids present', () => {
+  assert.ok(HTML.includes('data-testid="timing-optimizer-panel"'), 'panel testid missing');
+  assert.ok(HTML.includes('data-testid="timing-card-rank-'), 'card testid missing');
+});
+
+t('TimingOptimizer: CSS classes defined', () => {
+  ['.timing-optimizer-panel', '.timing-card', '.tc-rank-badge', '.tc-stats', '.tc-delta', '.top-card', '.tc-save-btn'].forEach(sel => {
+    assert.ok(HTML.includes(sel), `CSS selector ${sel} missing`);
+  });
+});
+
+t('TimingOptimizer: button rendered inside paid-user branch (sibling to save-btn)', () => {
+  // Both buttons must appear in the same div block, gated by userSubscription.active
+  const savePos = HTML.indexOf('id="save-btn"');
+  const optPos = HTML.indexOf('id="optimize-btn"');
+  assert.ok(savePos > 0 && optPos > 0, 'both buttons must exist');
+  // The optimize button should appear within ~2KB of the save button (same div block)
+  assert.ok(Math.abs(savePos - optPos) < 2000, 'optimize-btn not adjacent to save-btn');
+});
+
+t('TimingOptimizer: saveOptimizedPlan reuses saveStrategy pipeline', () => {
+  // saveOptimizedPlan should mutate exitPlan and call saveStrategy
+  assert.ok(HTML.includes('saveOptimizedPlan'), 'saveOptimizedPlan missing');
+  assert.ok(HTML.includes('await saveStrategy(s)') || HTML.includes('saveStrategy(s)'), 'saveStrategy call missing in saveOptimizedPlan');
+});
+
+// ─────────────────────────────────────────────────────────────
 // Runner
 // ─────────────────────────────────────────────────────────────
 (async () => {

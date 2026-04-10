@@ -1268,6 +1268,57 @@ body {
 .exit-factors li.ef-warn { color: var(--orange); }
 .exit-factors li.ef-warn::before { content: '\26A0  '; }
 .exit-factors li.ef-info::before { content: '\2022  '; color: var(--dimmer); }
+
+/* ===== Timing Optimizer ===== */
+.timing-optimizer-panel {
+  margin: 12px 0; padding: 12px;
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 8px;
+}
+.to-header { display: flex; justify-content: space-between; align-items: center; }
+.to-header h4 { margin: 0; font-size: 13px; color: var(--accent); }
+.to-close {
+  background: none; border: 1px solid var(--border); color: var(--dim);
+  padding: 4px 10px; border-radius: 4px; font-size: 10px; cursor: pointer; font-family: inherit;
+}
+.to-close:hover { color: var(--text); }
+.to-subtitle { font-size: 10px; color: var(--dim); margin: 4px 0 10px; line-height: 1.4; }
+.to-loading { text-align: center; color: var(--dim); padding: 30px 20px; font-size: 12px; }
+.timing-card {
+  display: flex; gap: 10px; padding: 10px; margin: 6px 0;
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 6px;
+}
+.timing-card.top-card { border-color: var(--accent); }
+.tc-rank-badge {
+  min-width: 28px; height: 28px; border-radius: 50%;
+  background: var(--bg4); color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 12px; flex-shrink: 0;
+}
+.timing-card.top-card .tc-rank-badge { background: var(--accent); color: #000; }
+.tc-body { flex: 1; min-width: 0; }
+.tc-name { font-weight: 700; font-size: 12px; color: var(--text); }
+.tc-conditions {
+  display: flex; gap: 12px; font-size: 10px; color: var(--dim);
+  margin: 2px 0 6px; flex-wrap: wrap;
+}
+.tc-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.tc-stat { background: var(--bg2); border-radius: 4px; padding: 6px 4px; text-align: center; }
+.tc-stat-label { font-size: 9px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.5px; }
+.tc-stat-val { font-size: 12px; font-weight: 700; color: var(--text); margin-top: 2px; }
+.tc-delta {
+  margin-top: 6px; font-size: 10px; padding: 3px 8px;
+  display: inline-block; border-radius: 3px;
+}
+.tc-delta.delta-good { background: rgba(82, 216, 105, 0.15); color: var(--green); }
+.tc-delta.delta-bad { background: rgba(255, 107, 107, 0.15); color: var(--red); }
+.tc-delta.delta-neutral { background: var(--bg4); color: var(--dim); }
+.tc-save-btn {
+  display: block; margin-top: 8px;
+  background: var(--accent); color: #000; border: none;
+  padding: 6px 16px; border-radius: 4px;
+  font-weight: 700; font-size: 11px; cursor: pointer; font-family: inherit;
+}
+.tc-save-btn:hover { opacity: 0.9; }
 </style>
 </head>
 <body>
@@ -1419,6 +1470,7 @@ body {
 <!-- /Newsletter Signup -->
 
 <script src="exit-plan.js"></script>
+<script src="timing-optimizer.js"></script>
 <script>
 // ===== ERROR BOUNDARY =====
 window.onerror = function(msg, src, line, col, err) {
@@ -2486,7 +2538,11 @@ function showDetail(idx) {
   // Save button (only for paid users)
   if (userSubscription.active) {
     const isSaved = userSavedStrategies.some(sv => sv.strategy_name === s.name && sv.symbol === lastResult.symbol && JSON.stringify(sv.legs.map(l=>l.strike)) === JSON.stringify(s.legs.filter(l=>l.type!=='Stock').map(l=>l.strike)));
-    html += `<div style="text-align:center;padding:10px 0"><button id="save-btn" onclick="event.stopPropagation();saveStrategy(window._modalStrategy)" style="background:${isSaved ? 'var(--bg3)' : 'var(--accent)'};color:${isSaved ? 'var(--dim)' : '#000'};border:none;padding:10px 28px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit" ${isSaved ? 'disabled' : ''}>${isSaved ? 'Saved' : 'Save Strategy'}</button></div>`;
+    html += `<div style="text-align:center;padding:10px 0;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <button id="save-btn" onclick="event.stopPropagation();saveStrategy(window._modalStrategy)" style="background:${isSaved ? 'var(--bg3)' : 'var(--accent)'};color:${isSaved ? 'var(--dim)' : '#000'};border:none;padding:10px 28px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit" ${isSaved ? 'disabled' : ''}>${isSaved ? 'Saved' : 'Save Strategy'}</button>
+      <button id="optimize-btn" onclick="event.stopPropagation();openTimingOptimizer(window._modalStrategy)" style="background:var(--bg3);color:var(--accent);border:1px solid var(--accent);padding:10px 28px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit">\u26A1 Optimize Timing</button>
+    </div>
+    <div id="timing-optimizer-section" style="display:none"></div>`;
   }
   window._modalStrategy = s;
 
@@ -2660,6 +2716,113 @@ async function saveStrategy(strategy) {
       if (btn) { btn.textContent = 'Saved'; btn.disabled = true; btn.style.background = 'var(--bg3)'; btn.style.color = 'var(--dim)'; }
     }
   } catch (e) { }
+}
+
+// ===== TIMING OPTIMIZER =====
+function openTimingOptimizer(strategy) {
+  if (!userSubscription.active) { showUpgradeModal(); return; }
+  if (!strategy || !window.optimizeTimings) return;
+  const section = document.getElementById('timing-optimizer-section');
+  if (!section) return;
+  section.style.display = '';
+  section.innerHTML = '<div class="timing-optimizer-panel"><div class="to-loading">\u26A1 Simulating 1,000 price paths across timing scenarios...</div></div>';
+  // Defer the heavy work so the loading state paints first
+  setTimeout(function () {
+    try {
+      const marketState = {
+        symbol: lastResult ? lastResult.symbol : '',
+        price: lastResult ? lastResult.price : strategy.legs[0].strike,
+        avgIV: lastResult ? lastResult.avgIV : (strategy.iv || 0.3),
+        ivRank: lastResult ? lastResult.ivRank : 50,
+        earningsDays: lastResult ? lastResult.daysUntilEarnings : null,
+        marketPulse: window._lastMarketPulse || null,
+        now: new Date(),
+        entryDate: new Date().toISOString().slice(0, 10),
+      };
+      const t0 = Date.now();
+      const ranked = window.optimizeTimings(strategy, marketState, { nPaths: 1000, nProposals: 5 });
+      const elapsed = Date.now() - t0;
+      window._lastOptimizedProposals = ranked;
+      section.innerHTML = renderTimingOptimizerCards(ranked, strategy, elapsed);
+    } catch (e) {
+      section.innerHTML = '<div class="timing-optimizer-panel"><div class="to-loading" style="color:var(--red)">Optimizer failed: ' + (e.message || e) + '</div></div>';
+    }
+  }, 20);
+}
+
+function closeTimingOptimizer() {
+  const section = document.getElementById('timing-optimizer-section');
+  if (section) section.style.display = 'none';
+}
+
+function renderTimingOptimizerCards(ranked, strategy, elapsed) {
+  return '<div class="timing-optimizer-panel" data-testid="timing-optimizer-panel">'
+    + '<div class="to-header">'
+    + '<h4>\u26A1 Ranked Timing Proposals</h4>'
+    + '<button class="to-close" onclick="closeTimingOptimizer()">Collapse</button>'
+    + '</div>'
+    + '<div class="to-subtitle">Based on 1,000 Monte Carlo simulations (' + elapsed + 'ms). Mean P&L uses mid prices \u2014 real fills may haircut 5\u201315%.</div>'
+    + ranked.map((r, i) => renderTimingCard(r, i === 0, strategy)).join('')
+    + '</div>';
+}
+
+function renderTimingCard(r, isTop, strategy) {
+  const sim = r.simulation;
+  const delta = r.deltaVsDefault || 0;
+  const isBaseline = r.candidate.id === 'baseline';
+  const deltaClass = isBaseline ? 'delta-neutral' : (delta > 0 ? 'delta-good' : delta < 0 ? 'delta-bad' : 'delta-neutral');
+  const deltaSign = delta > 0 ? '+' : '';
+  const meanColor = sim.meanPnl >= 0 ? 'var(--green)' : 'var(--red)';
+  const meanSign = sim.meanPnl >= 0 ? '+' : '';
+  return '<div class="timing-card' + (isTop ? ' top-card' : '') + '" data-testid="timing-card-rank-' + r.rank + '">'
+    + '<div class="tc-rank-badge">#' + r.rank + '</div>'
+    + '<div class="tc-body">'
+    + '<div class="tc-name">' + r.candidate.name + '</div>'
+    + '<div class="tc-conditions">'
+    + '<span class="tc-entry">Entry: ' + r.candidate.entryCondition + '</span>'
+    + '<span class="tc-exit">Exit: ' + r.candidate.exitCondition + '</span>'
+    + '</div>'
+    + '<div class="tc-stats">'
+    + '<div class="tc-stat"><div class="tc-stat-label">Expected P&L</div><div class="tc-stat-val" style="color:' + meanColor + '">' + meanSign + '$' + sim.meanPnl.toFixed(0) + '</div></div>'
+    + '<div class="tc-stat"><div class="tc-stat-label">Win rate</div><div class="tc-stat-val">' + (sim.winRate * 100).toFixed(0) + '%</div></div>'
+    + '<div class="tc-stat"><div class="tc-stat-label">Hold</div><div class="tc-stat-val">~' + sim.expectedHoldDays + 'd</div></div>'
+    + '<div class="tc-stat"><div class="tc-stat-label">5\u201395%</div><div class="tc-stat-val" style="font-size:10px">$' + sim.percentile5.toFixed(0) + ' / $' + sim.percentile95.toFixed(0) + '</div></div>'
+    + '</div>'
+    + (isBaseline
+      ? '<div class="tc-delta delta-neutral">Baseline (default plan)</div>'
+      : '<div class="tc-delta ' + deltaClass + '">' + deltaSign + '$' + delta.toFixed(0) + ' vs default plan</div>')
+    + (isTop ? '<button class="tc-save-btn" onclick="saveOptimizedPlan(0)">Save This Plan</button>' : '')
+    + '</div>'
+    + '</div>';
+}
+
+async function saveOptimizedPlan(idx) {
+  const ranked = window._lastOptimizedProposals;
+  if (!ranked || !ranked[idx]) return;
+  const r = ranked[idx];
+  const s = window._modalStrategy;
+  if (!s) return;
+  const origPlan = s.exitPlan;
+  const override = {
+    profitTarget: r.candidate.params.profitTargetDollars != null ? r.candidate.params.profitTargetDollars : (origPlan ? origPlan.profitTarget : 0),
+    stopLoss: r.candidate.params.stopLossDollars != null ? r.candidate.params.stopLossDollars : (origPlan ? origPlan.stopLoss : null),
+    timeStopDTE: r.candidate.params.timeStopDTE != null ? r.candidate.params.timeStopDTE : (origPlan ? origPlan.timeStopDTE : 7),
+    entryDate: origPlan ? origPlan.entryDate : new Date().toISOString().slice(0, 10),
+    holdDays: r.simulation.expectedHoldDays,
+    targetExitDate: origPlan ? origPlan.targetExitDate : null,
+    explanation: 'Timing-optimized: ' + r.candidate.exitCondition + ' (sim mean $' + r.simulation.meanPnl.toFixed(0) + ', ' + (r.simulation.winRate * 100).toFixed(0) + '% win rate).',
+    optimized: true,
+    optimizedFrom: r.candidate.id,
+    optimizedMeanPnl: r.simulation.meanPnl,
+    optimizedWinRate: r.simulation.winRate,
+    dynamicFactors: origPlan ? origPlan.dynamicFactors : [],
+  };
+  s.exitPlan = override;
+  try {
+    await saveStrategy(s);
+  } finally {
+    s.exitPlan = origPlan;
+  }
 }
 
 async function unsaveStrategy(id) {
