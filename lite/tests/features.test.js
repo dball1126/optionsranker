@@ -76,7 +76,7 @@ t('ImpliedMove: computeImpliedMove function defined', () => {
 
 t('ImpliedMove: result object includes impliedMove field', () => {
   assert.ok(HTML.includes('impliedMove'), 'impliedMove field missing in result');
-  assert.ok(HTML.includes('impliedMove }'), 'impliedMove not destructured in renderResults');
+  assert.ok(HTML.includes('impliedMove,') || HTML.includes('impliedMove }'), 'impliedMove not destructured in renderResults');
 });
 
 t('ImpliedMove: displayed in IV banner with testid', () => {
@@ -205,6 +205,98 @@ t('TimingOptimizer: saveOptimizedPlan reuses saveStrategy pipeline', () => {
   // saveOptimizedPlan should mutate exitPlan and call saveStrategy
   assert.ok(HTML.includes('saveOptimizedPlan'), 'saveOptimizedPlan missing');
   assert.ok(HTML.includes('await saveStrategy(s)') || HTML.includes('saveStrategy(s)'), 'saveStrategy call missing in saveOptimizedPlan');
+});
+
+// ─────────────────────────────────────────────────────────────
+// Pro Analytics — Phase 1 + 2 + 3 (2026-04-11)
+// ─────────────────────────────────────────────────────────────
+t('ProAnalytics: options-analytics.js script tag present', () => {
+  assert.ok(HTML.includes('<script src="options-analytics.js">'), 'options-analytics.js script missing');
+});
+
+t('ProAnalytics: skew computation and badge', () => {
+  assert.ok(HTML.includes('window.computeSkew'), 'computeSkew not referenced');
+  assert.ok(HTML.includes('data-testid="badge-skew"'), 'skew badge testid missing');
+  assert.ok(HTML.includes('skewInfo'), 'skewInfo variable missing');
+});
+
+t('ProAnalytics: skew-aware scoring boost', () => {
+  assert.ok(HTML.includes('isCreditPut') || HTML.includes('isCreditCall'), 'skew-aware scoring branches missing');
+});
+
+t('ProAnalytics: VRP computation in market pulse', () => {
+  assert.ok(HTML.includes('window.computeVRP'), 'computeVRP not referenced');
+  assert.ok(HTML.includes('window.computeRealizedVol'), 'computeRealizedVol not referenced');
+  assert.ok(HTML.includes('data-testid="badge-vrp"'), 'VRP badge testid missing');
+  assert.ok(HTML.includes('vrp,') || HTML.includes('vrp:'), 'vrp field in cache missing');
+});
+
+t('ProAnalytics: GEX computation for SPY/QQQ', () => {
+  assert.ok(HTML.includes('window.computeGEX'), 'computeGEX not referenced');
+  assert.ok(HTML.includes('data-testid="badge-gex"'), 'GEX badge testid missing');
+});
+
+t('ProAnalytics: skew-adjusted POP wired into scoring loop', () => {
+  assert.ok(HTML.includes('window.skewAdjustedProb'), 'skewAdjustedProb not referenced');
+  assert.ok(HTML.includes('probLognormal'), 'lognormal prob preservation missing');
+});
+
+t('ProAnalytics: bid-ask disqualifier filters strategies', () => {
+  assert.ok(HTML.includes('disqualified = true') || HTML.includes('disqualified=true'), 'disqualified flag missing');
+  assert.ok(HTML.includes('data-testid="dq-note"'), 'dq-note testid missing');
+});
+
+t('ProAnalytics: earnings crush model wired', () => {
+  assert.ok(HTML.includes('window.computeEarningsCrushEdge'), 'earnings crush helper not referenced');
+  assert.ok(HTML.includes('data-testid="badge-earnings-crush"'), 'earnings crush badge missing');
+});
+
+t('ProAnalytics: position sizing card', () => {
+  assert.ok(HTML.includes('window.computeKellySize'), 'computeKellySize not referenced');
+  assert.ok(HTML.includes('function renderSizingCard'), 'renderSizingCard missing');
+  assert.ok(HTML.includes('data-testid="sizing-card"'), 'sizing-card testid missing');
+  assert.ok(HTML.includes('data-testid="settings-row"'), 'settings-row testid missing');
+  assert.ok(HTML.includes('ACCOUNT_SIZE_KEY'), 'account size storage key missing');
+});
+
+t('ProAnalytics: scenario heatmap toggle and renderer', () => {
+  assert.ok(HTML.includes('function drawScenarioHeatmap'), 'drawScenarioHeatmap missing');
+  assert.ok(HTML.includes('setPayoffMode'), 'setPayoffMode toggle missing');
+  assert.ok(HTML.includes('data-testid="heatmap-toggle"'), 'heatmap-toggle testid missing');
+  assert.ok(HTML.includes('valueStrategyAtPrice'), 'heatmap should reuse valueStrategyAtPrice');
+});
+
+t('ProAnalytics: similar trades pattern matcher in modal', () => {
+  assert.ok(HTML.includes('data-testid="similar-trades-section"'), 'similar-trades-section testid missing');
+  assert.ok(HTML.includes('async function loadSimilarTrades'), 'loadSimilarTrades function missing');
+  assert.ok(HTML.includes('/api/similar-trades'), 'similar-trades API call missing');
+});
+
+t('ProAnalytics: portfolio greeks aggregation', () => {
+  assert.ok(HTML.includes('data-testid="portfolio-greeks"'), 'portfolio-greeks testid missing');
+  assert.ok(HTML.includes('netDelta'), 'netDelta aggregation missing');
+});
+
+t('ProAnalytics: roll suggestions section', () => {
+  assert.ok(HTML.includes('data-testid="roll-suggestions"'), 'roll-suggestions testid missing');
+  assert.ok(HTML.includes('Time Stop Approaching') || HTML.includes('Manage Position'), 'roll suggestions header missing');
+});
+
+t('ProAnalytics: wheel tracker MVP', () => {
+  assert.ok(HTML.includes('data-testid="wheel-tracker"'), 'wheel-tracker testid missing');
+  assert.ok(HTML.includes('function renderWheels'), 'renderWheels missing');
+  assert.ok(HTML.includes('function addWheel'), 'addWheel missing');
+  assert.ok(HTML.includes('WHEEL_KEY'), 'WHEEL_KEY storage missing');
+});
+
+t('ProAnalytics: analytics-row container in IV banner', () => {
+  assert.ok(HTML.includes('data-testid="analytics-row"'), 'analytics-row testid missing');
+});
+
+t('ProAnalytics: CSS classes for new features', () => {
+  ['.analytics-row', '.analytics-badge', '.sizing-card', '.portfolio-greeks', '.similar-trades', '.heatmap-toggle', '.wheel-card', '.dq-note'].forEach(sel => {
+    assert.ok(HTML.includes(sel), `CSS selector ${sel} missing`);
+  });
 });
 
 // ─────────────────────────────────────────────────────────────

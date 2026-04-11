@@ -1319,6 +1319,97 @@ body {
   font-weight: 700; font-size: 11px; cursor: pointer; font-family: inherit;
 }
 .tc-save-btn:hover { opacity: 0.9; }
+
+/* ===== Pro analytics row (Skew, VRP, GEX, Earnings Crush) ===== */
+.analytics-row {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; padding-top: 8px;
+  border-top: 1px dashed var(--border);
+}
+.analytics-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 12px;
+  padding: 3px 10px; font-size: 10px; cursor: help;
+}
+.analytics-badge .ab-label { color: var(--dim); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; }
+.analytics-badge .ab-value { font-weight: 700; }
+.dq-note {
+  margin-top: 6px; padding: 4px 8px;
+  background: rgba(255, 152, 0, 0.1); color: var(--orange);
+  font-size: 10px; border-radius: 4px; text-align: center;
+}
+
+/* ===== Position sizing card ===== */
+.sizing-card {
+  margin-top: 8px; padding: 8px 10px;
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 6px;
+  font-size: 11px;
+}
+.sizing-card .sc-title { font-size: 9px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
+.sizing-card .sc-line { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.sizing-card .sc-contracts { font-weight: 700; font-size: 14px; color: var(--accent); }
+.sizing-card .sc-detail { font-size: 10px; color: var(--dim); }
+
+/* ===== Settings: account size ===== */
+.settings-row {
+  display: flex; gap: 8px; align-items: center; padding: 8px 12px;
+  background: var(--bg2); border-bottom: 1px solid var(--border); font-size: 11px;
+}
+.settings-row label { color: var(--dim); }
+.settings-row input {
+  background: var(--bg1); color: var(--text); border: 1px solid var(--border);
+  padding: 4px 8px; border-radius: 4px; font-size: 11px; width: 100px; font-family: inherit;
+}
+
+/* ===== Portfolio greeks header ===== */
+.portfolio-greeks {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+  margin-bottom: 10px; padding: 8px;
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 6px;
+}
+.pg-cell { text-align: center; }
+.pg-label { font-size: 9px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.5px; }
+.pg-value { font-size: 13px; font-weight: 700; margin-top: 2px; }
+
+/* ===== Similar trades / pattern matcher ===== */
+.similar-trades {
+  margin-top: 8px; padding: 10px;
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 6px;
+}
+.st-title { font-size: 11px; color: var(--dim); margin-bottom: 6px; }
+.st-stats { display: flex; gap: 12px; }
+.st-stat { font-size: 11px; }
+.st-stat strong { color: var(--text); font-size: 13px; }
+
+/* ===== Scenario heatmap ===== */
+.heatmap-toggle {
+  display: inline-flex; gap: 4px; margin-bottom: 6px;
+  font-size: 10px; color: var(--dim);
+}
+.heatmap-toggle button {
+  background: var(--bg3); color: var(--dim); border: 1px solid var(--border);
+  padding: 3px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; font-family: inherit;
+}
+.heatmap-toggle button.active { background: var(--accent); color: #000; border-color: var(--accent); }
+
+/* ===== Wheel tracker ===== */
+.wheel-tracker { margin-top: 12px; }
+.wheel-card {
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 6px;
+  padding: 10px; margin-bottom: 6px;
+}
+.wheel-card .wc-head { display: flex; justify-content: space-between; align-items: center; }
+.wheel-card .wc-ticker { font-weight: 700; font-size: 13px; color: var(--text); }
+.wheel-card .wc-state {
+  font-size: 9px; padding: 2px 8px; border-radius: 10px;
+  background: var(--bg4); color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px;
+}
+.wheel-card .wc-detail { font-size: 10px; color: var(--dim); margin-top: 4px; }
+.wheel-card .wc-profit { font-weight: 700; }
+.wheel-card .wc-actions { margin-top: 6px; display: flex; gap: 4px; }
+.wheel-card .wc-actions button {
+  background: var(--bg4); color: var(--text); border: none; padding: 4px 10px;
+  border-radius: 4px; font-size: 10px; cursor: pointer; font-family: inherit;
+}
 </style>
 </head>
 <body>
@@ -1388,6 +1479,11 @@ body {
       <span class="results-price" id="results-price"></span>
     </div>
     <input type="text" class="results-search" id="search-results" placeholder="Search another ticker..." autocomplete="off">
+  </div>
+  <div class="settings-row" data-testid="settings-row">
+    <label for="account-size-input">Account size:</label>
+    <input type="number" id="account-size-input" min="100" step="100" placeholder="10000" oninput="setAccountSize(this.value)">
+    <span id="account-size-display" style="color:var(--dim);font-size:10px"></span>
   </div>
   <div class="results-grid">
     <div class="strat-panel" id="strat-panel"></div>
@@ -1471,6 +1567,7 @@ body {
 
 <script src="exit-plan.js"></script>
 <script src="timing-optimizer.js"></script>
+<script src="options-analytics.js"></script>
 <script>
 // ===== ERROR BOUNDARY =====
 window.onerror = function(msg, src, line, col, err) {
@@ -1962,7 +2059,7 @@ async function analyzeOptionsStrategies(symbol) {
   if (!targetExps.length && expirations.length) targetExps.push(expirations[0]);
   if (!targetExps.length) throw new Error('No suitable expirations');
 
-  const allStrategies = [];
+  let allStrategies = [];
   let allChainData = [];
 
   for (const exp of targetExps.slice(0, 3)) {
@@ -2087,9 +2184,102 @@ async function analyzeOptionsStrategies(symbol) {
     });
   } catch (e) { }
 
-  // Score — with earnings proximity adjustments
+  // Phase 1.2 — IV Skew (computed from the nearest expiration with viable contracts)
+  let skewInfo = { skew: 0, available: false };
+  try {
+    if (allChainData.length && window.computeSkew) {
+      const near = allChainData[0];
+      const Tnear = Math.max(0.01, (near.expiration - now) / (365 * 86400));
+      skewInfo = window.computeSkew(near.calls, near.puts, S, Tnear) || skewInfo;
+    }
+  } catch (e) { }
+
+  // Phase 2.2 — Earnings IV Crush edge (only if earnings is in range)
+  let earningsCrush = null;
+  try {
+    // Compute ATM straddle mid for the nearest expiration
+    let atmStraddleMid = null;
+    if (allChainData.length) {
+      const near = allChainData[0];
+      const atmCall = near.calls.reduce((b, c) => (Math.abs(c.strike - S) < Math.abs(b.strike - S) ? c : b), near.calls[0]);
+      const atmPut = near.puts.reduce((b, c) => (Math.abs(c.strike - S) < Math.abs(b.strike - S) ? c : b), near.puts[0]);
+      if (atmCall && atmPut) {
+        const callMid = ((atmCall.bid || 0) + (atmCall.ask || atmCall.lastPrice || 0)) / 2 || atmCall.lastPrice || 0;
+        const putMid = ((atmPut.bid || 0) + (atmPut.ask || atmPut.lastPrice || 0)) / 2 || atmPut.lastPrice || 0;
+        atmStraddleMid = callMid + putMid;
+      }
+    }
+    if (window.computeEarningsCrushEdge && daysUntilEarnings != null && daysUntilEarnings >= 0 && daysUntilEarnings <= 30 && atmStraddleMid != null) {
+      // Pull last ~250 days of price history and find the largest single-day moves around quarterly intervals as proxies for past earnings reactions
+      const histResp = await fetch(`/api/chart/${symbol}?range=1y&interval=1d`).then(r => r.json()).catch(() => null);
+      const closes = histResp?.chart?.result?.[0]?.indicators?.quote?.[0]?.close;
+      if (closes && closes.length > 60) {
+        // Find earnings-like spikes: top 4 largest absolute % moves with at least 50 days between them
+        const moves = [];
+        for (let i = 1; i < closes.length; i++) {
+          if (closes[i - 1] > 0 && closes[i] > 0) {
+            moves.push({ idx: i, absMove: Math.abs(closes[i] - closes[i - 1]), pctMove: Math.abs((closes[i] / closes[i - 1] - 1)) });
+          }
+        }
+        moves.sort((a, b) => b.pctMove - a.pctMove);
+        const earningsCandidates = [];
+        for (const m of moves) {
+          if (earningsCandidates.length >= 4) break;
+          if (earningsCandidates.every(c => Math.abs(c.idx - m.idx) > 50)) earningsCandidates.push(m);
+        }
+        const historicalMoves = earningsCandidates.map(m => m.absMove);
+        if (historicalMoves.length >= 2) {
+          earningsCrush = window.computeEarningsCrushEdge(S, atmStraddleMid, historicalMoves);
+        }
+      }
+    }
+  } catch (e) { }
+
+  // Score — with earnings proximity, IV skew, VRP, GEX, and earnings-crush adjustments
   const earningsInRange = daysUntilEarnings !== null && daysUntilEarnings >= 0 && daysUntilEarnings <= 14;
+  // Pull regime signals from cache (set by loadMarketPulse)
+  const mpCache = (window._lastMarketPulse && (Date.now() - window._lastMarketPulse.computedAt) < 6 * 3600 * 1000) ? window._lastMarketPulse : null;
+  const vrp = mpCache ? mpCache.vrp : null;
+  const gex = (mpCache && mpCache.gex) ? mpCache.gex : null;
+  const isSpyLike = ['SPY', 'QQQ', 'IWM', 'DIA'].includes(symbol.toUpperCase());
+
+  // Phase 1.5 — bid-ask disqualifier: filter out strategies with spreadPct > 5% of mid
+  let _dqCount = 0;
+  allStrategies = allStrategies.filter(s => {
+    const avgLegPrice = s.legs.reduce((a, l) => a + (l.price || 0), 0) / s.legs.length;
+    if (avgLegPrice <= 0) return true;
+    const spreadPct = (s.bidAskSpread || 0) / s.legs.length / avgLegPrice;
+    if (spreadPct > 0.05) {
+      s.disqualified = true;
+      _dqCount++;
+      return false;
+    }
+    return true;
+  });
+
   allStrategies.forEach(s => {
+    // Phase 1.4 — Skew-adjusted POP
+    // Recompute prob using skew-aware tail adjustment when we have skew data
+    if (skewInfo.available && window.skewAdjustedProb && s.breakeven && s.breakeven.length && s.dte > 0) {
+      try {
+        const T = s.dte / 365;
+        const atmIV = s.iv || avgIV;
+        s.probLognormal = s.prob;  // preserve original for debugging
+        if (s.breakeven.length === 1) {
+          const be = s.breakeven[0];
+          const direction = (s.sentiment === 'bullish') ? 'above' : 'below';
+          s.prob = window.skewAdjustedProb(S, be, T, atmIV, skewInfo.skew, direction);
+        } else if (s.breakeven.length === 2) {
+          // Range strategy (Iron Condor, Butterfly, etc.) — prob of staying inside
+          const lo = Math.min(...s.breakeven);
+          const hi = Math.max(...s.breakeven);
+          const probAboveLo = window.skewAdjustedProb(S, lo, T, atmIV, skewInfo.skew, 'above');
+          const probAboveHi = window.skewAdjustedProb(S, hi, T, atmIV, skewInfo.skew, 'above');
+          s.prob = Math.max(0, Math.min(1, probAboveLo - probAboveHi));
+        }
+      } catch (e) { /* keep original prob on failure */ }
+    }
+
     const scores = scoreStrategy(s, ivRank);
     let adj = 0;
     s.earningsFlag = null;
@@ -2107,12 +2297,58 @@ async function analyzeOptionsStrategies(symbol) {
         s.earningsFlag = 'boost';
       }
     }
+
+    // Phase 1.2 — IV skew bonus
+    s.skew = skewInfo.skew;
+    if (skewInfo.available && Math.abs(skewInfo.skew) > 0.05) {
+      const isCreditPut = s.name === 'Bull Put Spread' || s.name === 'Cash-Secured Put' || s.name === 'Iron Condor';
+      const isCreditCall = s.name === 'Bear Call Spread' || s.name === 'Covered Call';
+      const isLongPut = s.name === 'Long Put' || s.name === 'Bear Put Spread';
+      const isLongCall = s.name === 'Long Call' || s.name === 'Bull Call Spread';
+      if (skewInfo.skew > 0.05) {
+        // Put-rich (fear): credit puts have edge, long puts expensive
+        if (isCreditPut) adj += 5;
+        else if (isLongPut) adj -= 2;
+        else if (isLongCall) adj += 2; // calls are relatively cheap
+      } else if (skewInfo.skew < -0.03) {
+        // Call-rich (greed): credit calls have edge, long calls expensive
+        if (isCreditCall) adj += 5;
+        else if (isLongCall) adj -= 2;
+        else if (isLongPut) adj += 2;
+      }
+    }
+
+    // Phase 1.3 — VRP bonus (sellers favored when VRP > 1.3, buyers when < 0.9)
+    if (vrp != null) {
+      const isNetSeller = s.name.includes('Covered') || s.name.includes('Cash-Secured') || s.name === 'Iron Condor' || s.name.includes('Bull Put') || s.name.includes('Bear Call') || s.name.includes('Ratio Spread');
+      const isNetBuyer = s.name === 'Long Call' || s.name === 'Long Put' || s.name === 'Straddle' || s.name === 'Strangle';
+      if (vrp > 1.3 && isNetSeller) adj += 3;
+      else if (vrp < 0.9 && isNetBuyer) adj += 3;
+    }
+
+    // Phase 2.1 — GEX bonus (only for SPY/QQQ-correlated underlyings)
+    if (gex && isSpyLike) {
+      const isLongDirectional = s.name === 'Long Call' || s.name === 'Long Put';
+      const isMeanRevert = s.name === 'Iron Condor' || s.name.includes('Bull Put') || s.name.includes('Bear Call');
+      if (gex.regime === 'mean_reverting' && isMeanRevert) adj += 3;
+      else if (gex.regime === 'trending' && isLongDirectional) adj += 5;
+    }
+
+    // Phase 2.2 — Earnings crush bonus
+    if (earningsCrush && earningsCrush.recommendation === 'sell_premium') {
+      const isShortPremium = s.name === 'Iron Condor' || s.name.includes('Bull Put') || s.name.includes('Bear Call') || s.name === 'Cash-Secured Put' || s.name === 'Covered Call';
+      if (isShortPremium) adj += 5;
+    } else if (earningsCrush && earningsCrush.recommendation === 'buy_premium') {
+      const isLongPremium = s.name === 'Long Call' || s.name === 'Long Put' || s.name === 'Straddle' || s.name === 'Strangle';
+      if (isLongPremium) adj += 5;
+    }
+
     s.score = Math.max(0, Math.min(100, scores.total + adj));
     s.probDisplay = scores.prob; s.rrDisplay = scores.rr; s.evDisplay = scores.ev; s.scoreComponents = scores.components;
+    s.scoreAdj = adj;  // expose for debugging / display
     // Attach dynamic exit plan
     try {
-      const mp = (window._lastMarketPulse && (Date.now() - window._lastMarketPulse.computedAt) < 6 * 3600 * 1000) ? window._lastMarketPulse : null;
-      s.exitPlan = window.computeExitPlan ? window.computeExitPlan(s, ivRank, mp, daysUntilEarnings, new Date()) : null;
+      s.exitPlan = window.computeExitPlan ? window.computeExitPlan(s, ivRank, mpCache, daysUntilEarnings, new Date()) : null;
     } catch (e) { s.exitPlan = null; }
   });
   allStrategies.sort((a, b) => b.score - a.score);
@@ -2129,7 +2365,12 @@ async function analyzeOptionsStrategies(symbol) {
   // Prefer ATM straddle mid (most accurate), fall back to S * avgIV * sqrt(T)
   const impliedMove = computeImpliedMove(allChainData, S, avgIV, now);
 
-  return { strategies: unique, ivRank, avgIV, ivSource, price: S, chainData: allChainData, expirations, symbol, daysUntilEarnings, marketState, regularMarketTime, impliedMove };
+  return {
+    strategies: unique, ivRank, avgIV, ivSource, price: S, chainData: allChainData,
+    expirations, symbol, daysUntilEarnings, marketState, regularMarketTime, impliedMove,
+    skew: skewInfo, vrp, gex, earningsCrush,
+    disqualifiedCount: _dqCount,
+  };
 }
 
 // Compute the implied 1-SD move by the nearest expiration.
@@ -2195,7 +2436,7 @@ function isStrategyLocked(index) {
 
 function renderResults(result) {
   lastResult = result;
-  const { strategies, ivRank, avgIV, ivSource, price, chainData, symbol, daysUntilEarnings, marketState, regularMarketTime, impliedMove } = result;
+  const { strategies, ivRank, avgIV, ivSource, price, chainData, symbol, daysUntilEarnings, marketState, regularMarketTime, impliedMove, skew, vrp, gex, earningsCrush, disqualifiedCount } = result;
 
   document.getElementById('results-symbol').textContent = symbol;
   document.getElementById('results-price').textContent = '$' + price.toFixed(2);
@@ -2273,11 +2514,48 @@ function renderResults(result) {
       <div class="im-range">Expected range by ${impliedMove.expDate}: <strong>$${lo}</strong> &mdash; <strong>$${hi}</strong></div>
     </div>`;
   }
+  // Phase 1.2/1.3/2.1/2.2 — Pro analytics row (skew, VRP, GEX, earnings crush)
+  let analyticsHtml = '';
+  const badges = [];
+  if (skew && skew.available && Math.abs(skew.skew) > 0.02) {
+    const skewPct = (skew.skew * 100).toFixed(1);
+    const skewColor = skew.skew > 0.05 ? 'var(--red)' : skew.skew < -0.03 ? 'var(--orange)' : 'var(--dim)';
+    const skewLabel = skew.skew > 0.05 ? 'Put-rich (fear)' : skew.skew < -0.03 ? 'Call-rich (greed)' : 'Neutral';
+    badges.push(`<span class="analytics-badge" data-testid="badge-skew" title="25-delta put IV − 25-delta call IV, normalized by ATM IV. Positive = puts more expensive (downside fear)."><span class="ab-label">Skew</span><span class="ab-value" style="color:${skewColor}">${skew.skew > 0 ? '+' : ''}${skewPct}% ${skewLabel}</span></span>`);
+  }
+  if (vrp != null) {
+    const vrpColor = vrp > 1.3 ? 'var(--green)' : vrp < 0.9 ? 'var(--orange)' : 'var(--dim)';
+    const vrpLabel = vrp > 1.3 ? 'Sellers favored' : vrp < 0.9 ? 'Buyers favored' : 'Neutral';
+    badges.push(`<span class="analytics-badge" data-testid="badge-vrp" title="Variance Risk Premium = VIX / 20-day SPY realized vol. >1.3 means options are pricing in more uncertainty than realized — premium sellers have edge."><span class="ab-label">VRP</span><span class="ab-value" style="color:${vrpColor}">${vrp.toFixed(2)} ${vrpLabel}</span></span>`);
+  }
+  if (gex && gex.available && ['SPY', 'QQQ', 'IWM', 'DIA'].includes(symbol.toUpperCase())) {
+    const gexColor = gex.regime === 'mean_reverting' ? 'var(--green)' : 'var(--orange)';
+    const gexLabel = gex.regime === 'mean_reverting' ? 'Mean reverting' : 'Trending';
+    const sign = gex.spotVsFlipPct >= 0 ? '+' : '';
+    badges.push(`<span class="analytics-badge" data-testid="badge-gex" title="Total dealer Gamma Exposure. Above the gamma flip strike = dealers long gamma → market mean-reverts. Below = dealers short gamma → market trends."><span class="ab-label">GEX</span><span class="ab-value" style="color:${gexColor}">${sign}${gex.spotVsFlipPct.toFixed(1)}% ${gexLabel}</span></span>`);
+  }
+  if (earningsCrush && earningsCrush.recommendation !== 'insufficient_data' && earningsCrush.recommendation !== 'neutral') {
+    const ecColor = earningsCrush.recommendation === 'sell_premium' ? 'var(--green)' : 'var(--orange)';
+    const ecLabel = earningsCrush.recommendation === 'sell_premium' ? 'Premium overpriced' : 'Premium underpriced';
+    const sign = earningsCrush.edgePct >= 0 ? '+' : '';
+    badges.push(`<span class="analytics-badge" data-testid="badge-earnings-crush" title="Implied move (ATM straddle × 0.85) vs median historical post-earnings move. Positive edge = options overpricing the move = favor short premium."><span class="ab-label">Earnings</span><span class="ab-value" style="color:${ecColor}">${sign}${earningsCrush.edgePct.toFixed(0)}% ${ecLabel}</span></span>`);
+  }
+  if (badges.length) {
+    analyticsHtml = `<div class="analytics-row" data-testid="analytics-row">${badges.join('')}</div>`;
+  }
+  // Phase 1.5 — disqualifier note
+  let dqHtml = '';
+  if (disqualifiedCount > 0) {
+    dqHtml = `<div class="dq-note" data-testid="dq-note">Filtered ${disqualifiedCount} strategies with bid-ask &gt; 5% of mid (untradeable)</div>`;
+  }
+
   html += `<div class="iv-banner">
     <div class="iv-row"><span class="iv-label">IV Rank <span style="font-size:8px;color:var(--dimmer)">(${ivSrcLabel})</span></span><span class="iv-value" style="color:${ivColor}">${Math.round(ivRank)}%</span></div>
     <div class="iv-bar"><div class="iv-fill" style="width:${ivRank}%;background:${ivColor}"></div></div>
     <div class="iv-hint">${ivHint} | Avg IV: ${(avgIV * 100).toFixed(1)}%</div>
     ${impliedMoveHtml}
+    ${analyticsHtml}
+    ${dqHtml}
   </div>`;
 
   // Controls
@@ -2295,6 +2573,7 @@ function renderResults(result) {
 
   // Saved section
   html += '<div id="saved-section"></div>';
+  html += '<div id="wheel-tracker" class="wheel-tracker" data-testid="wheel-tracker"></div>';
 
   // Cards
   html += '<div class="strat-cards" id="strat-cards">';
@@ -2326,6 +2605,7 @@ function renderResults(result) {
 
   // Load saved strategies
   loadSavedStrategies().then(() => renderSavedSection());
+  renderWheels();
 }
 
 function renderScoreBreakdown(components) {
@@ -2385,9 +2665,28 @@ function renderStrategyCards(strategies) {
         <div class="card-exit-stop">${s.exitPlan.stopLoss != null ? 'Stop \u2212$' + Math.abs(s.exitPlan.stopLoss).toFixed(0) : 'No stop'}</div>
         <div class="card-exit-date">By ${s.exitPlan.targetExitDate}</div>
       </div>` : ''}
+      ${renderSizingCard(s)}
       ${s.scoreComponents ? renderScoreBreakdown(s.scoreComponents) : ''}
     </div>`;
   }).join('');
+}
+
+// Phase 2.4 — Position sizing card
+function renderSizingCard(s) {
+  if (!window.computeKellySize || !s.maxProfit || !s.maxLoss || !isFinite(s.maxProfit) || !isFinite(s.maxLoss)) return '';
+  const accountSize = getAccountSize();
+  const sizing = window.computeKellySize(s.maxProfit, s.maxLoss, s.prob || s.probDisplay, accountSize);
+  if (!sizing.contracts) {
+    return `<div class="sizing-card" data-testid="sizing-card"><div class="sc-title">Suggested Size</div><div class="sc-line"><span class="sc-contracts">0 contracts</span><span class="sc-detail">Negative edge — skip</span></div></div>`;
+  }
+  const pctOfAccount = (sizing.riskDollars / accountSize * 100).toFixed(1);
+  return `<div class="sizing-card" data-testid="sizing-card">
+    <div class="sc-title">Suggested Size <span style="color:var(--dimmer);text-transform:none">(half-Kelly, capped at 2%)</span></div>
+    <div class="sc-line">
+      <span class="sc-contracts">${sizing.contracts} contracts</span>
+      <span class="sc-detail">$${sizing.riskDollars.toFixed(0)} risk · ${pctOfAccount}% of $${accountSize.toLocaleString()}</span>
+    </div>
+  </div>`;
 }
 
 function renderChainTable(cd, price) {
@@ -2465,7 +2764,12 @@ function showDetail(idx) {
   const maxL = s.maxLoss === Infinity ? 'Unlimited' : '$' + s.maxLoss.toFixed(2);
 
   let html = '';
-  html += '<div class="modal-section"><h4>Payoff Diagram</h4><canvas class="payoff-canvas" id="payoff-chart"></canvas></div>';
+  html += '<div class="modal-section"><h4>Payoff Diagram</h4>'
+    + '<div class="heatmap-toggle" data-testid="heatmap-toggle">'
+    + '<button id="payoff-mode-1d" class="active" onclick="setPayoffMode(\'1d\')">1D — At Expiration</button>'
+    + '<button id="payoff-mode-2d" onclick="setPayoffMode(\'2d\')">2D — Spot &times; Time</button>'
+    + '</div>'
+    + '<canvas class="payoff-canvas" id="payoff-chart"></canvas></div>';
 
   html += '<div class="modal-section"><h4>Legs</h4><table class="legs-table"><thead><tr><th>Action</th><th>Type</th><th>Strike</th><th>Price</th><th>Qty</th></tr></thead><tbody>';
   s.legs.forEach(l => {
@@ -2535,6 +2839,45 @@ function showDetail(idx) {
 
   html += `<div class="modal-section"><h4>Strategy Overview</h4><p class="explanation">${strategyExplanations[s.name] || 'A multi-leg options strategy.'}</p></div>`;
 
+  // Phase 3.1 — "Trades like this" pattern matcher
+  html += `<div class="modal-section" data-testid="similar-trades-section">
+    <h4>Similar Trades (Backtester)</h4>
+    <div id="similar-trades-content" class="similar-trades">
+      <div class="st-title">Loading historical pattern matches...</div>
+    </div>
+  </div>`;
+
+  // Phase 3.3 — Roll suggestions when approaching the time stop
+  if (s.exitPlan && s.dte != null && s.exitPlan.timeStopDTE != null && s.dte <= s.exitPlan.timeStopDTE + 7) {
+    const dteToTimestop = Math.max(0, s.dte - s.exitPlan.timeStopDTE);
+    const isInside = dteToTimestop <= 1;
+    const debit = s.legs.reduce((a, l) => { const m = (l.action === 'Buy' || l.action === 'Hold') ? -1 : 1; return a + (l.price || 0) * m * (l.qty || 1) * (l.type === 'Stock' ? 1 : 100); }, 0);
+    const closeNowPnl = -debit; // approximate — full mark-to-market would re-fetch
+    html += `<div class="modal-section" data-testid="roll-suggestions">
+      <h4>${isInside ? '\u26A0 Time Stop Approaching' : 'Manage Position'}</h4>
+      <div style="font-size:11px;color:var(--dim);margin-bottom:8px">
+        Position is ${isInside ? 'past' : dteToTimestop + ' days from'} the recommended time stop (${s.exitPlan.timeStopDTE} DTE).
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+        <div style="background:var(--bg3);border-radius:6px;padding:8px;text-align:center">
+          <div style="font-size:9px;color:var(--dim);text-transform:uppercase">Close Now</div>
+          <div style="font-size:13px;font-weight:700;color:${closeNowPnl >= 0 ? 'var(--green)' : 'var(--red)'};margin-top:2px">${closeNowPnl >= 0 ? '+' : ''}$${closeNowPnl.toFixed(0)}</div>
+          <div style="font-size:9px;color:var(--dimmer);margin-top:2px">at entry price approx</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:6px;padding:8px;text-align:center">
+          <div style="font-size:9px;color:var(--dim);text-transform:uppercase">Roll Out</div>
+          <div style="font-size:13px;font-weight:700;color:var(--accent);margin-top:2px">+30 DTE</div>
+          <div style="font-size:9px;color:var(--dimmer);margin-top:2px">Same strikes, next month</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:6px;padding:8px;text-align:center">
+          <div style="font-size:9px;color:var(--dim);text-transform:uppercase">Hold</div>
+          <div style="font-size:13px;font-weight:700;color:var(--orange);margin-top:2px">Risk</div>
+          <div style="font-size:9px;color:var(--dimmer);margin-top:2px">Past time stop</div>
+        </div>
+      </div>
+    </div>`;
+  }
+
   // Save button (only for paid users)
   if (userSubscription.active) {
     const isSaved = userSavedStrategies.some(sv => sv.strategy_name === s.name && sv.symbol === lastResult.symbol && JSON.stringify(sv.legs.map(l=>l.strike)) === JSON.stringify(s.legs.filter(l=>l.type!=='Stock').map(l=>l.strike)));
@@ -2549,6 +2892,36 @@ function showDetail(idx) {
   body.innerHTML = html;
   document.getElementById('detail-modal').classList.add('active');
   setTimeout(() => drawPayoffDiagram(s), 50);
+  // Fetch similar trades async (don't block render)
+  loadSimilarTrades(s);
+}
+
+// Phase 3.1 — fetch + render similar trades
+async function loadSimilarTrades(strategy) {
+  const container = document.getElementById('similar-trades-content');
+  if (!container || !strategy) return;
+  try {
+    const ivRank = (lastResult && lastResult.ivRank) || 50;
+    const dte = strategy.dte || 14;
+    const url = `/api/similar-trades?strategy=${encodeURIComponent(strategy.name)}&ivRank=${ivRank}&dte=${dte}`;
+    const resp = await fetch(url);
+    const data = await resp.json();
+    if (data.sampleSize === 0) {
+      container.innerHTML = `<div class="st-title">${data.message || 'No similar closed trades yet.'}</div>`;
+      return;
+    }
+    const winColor = data.winRate >= 0.6 ? 'var(--green)' : data.winRate >= 0.4 ? 'var(--orange)' : 'var(--red)';
+    const pnlColor = data.avgPnl >= 0 ? 'var(--green)' : 'var(--red)';
+    container.innerHTML = `
+      <div class="st-title">Last ${data.sampleSize} closed trades — same strategy, IV Rank \u00B110, DTE \u00B15</div>
+      <div class="st-stats">
+        <div class="st-stat"><strong style="color:${winColor}">${(data.winRate * 100).toFixed(0)}%</strong> win rate</div>
+        <div class="st-stat"><strong style="color:${pnlColor}">${data.avgPnl >= 0 ? '+' : ''}$${data.avgPnl.toFixed(0)}</strong> avg P&L</div>
+        <div class="st-stat"><strong style="color:${pnlColor}">${data.totalPnl >= 0 ? '+' : ''}$${data.totalPnl.toFixed(0)}</strong> total</div>
+      </div>`;
+  } catch (e) {
+    container.innerHTML = `<div class="st-title">Pattern matcher unavailable.</div>`;
+  }
 }
 
 function closeDetailModal() {
@@ -2673,6 +3046,128 @@ function drawPayoffDiagram(strategy) {
   ctx.textAlign = 'right';
   ctx.fillText('$' + maxPnl.toFixed(0), pad.left - 5, pad.top + 10);
   ctx.fillText('$' + minPnl.toFixed(0), pad.left - 5, H - pad.bottom - 2);
+}
+
+// Phase 2.3 — 2D scenario heatmap (spot × days remaining)
+let _payoffMode = '1d';
+function setPayoffMode(mode) {
+  _payoffMode = mode;
+  const b1 = document.getElementById('payoff-mode-1d');
+  const b2 = document.getElementById('payoff-mode-2d');
+  if (b1) b1.classList.toggle('active', mode === '1d');
+  if (b2) b2.classList.toggle('active', mode === '2d');
+  if (window._modalStrategy) {
+    if (mode === '1d') drawPayoffDiagram(window._modalStrategy);
+    else drawScenarioHeatmap(window._modalStrategy);
+  }
+}
+
+function drawScenarioHeatmap(strategy) {
+  const canvas = document.getElementById('payoff-chart');
+  if (!canvas || !window.valueStrategyAtPrice) return;
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  const W = rect.width, H = rect.height;
+
+  const strikes = strategy.legs.filter(l => l.type !== 'Stock').map(l => l.strike);
+  const minStrike = Math.min(...strikes), maxStrike = Math.max(...strikes);
+  const spread = (maxStrike - minStrike) || (minStrike * 0.1);
+  const priceLo = minStrike - spread * 1.5, priceHi = maxStrike + spread * 1.5;
+
+  const dte = Math.max(1, strategy.dte || 14);
+  const xSteps = 80;     // spot price columns
+  const ySteps = Math.min(dte, 60);  // days remaining rows (max 60 to keep cell size visible)
+
+  // Compute the grid of P&L values
+  const grid = new Array(ySteps + 1);
+  let absMax = 1;
+  for (let yi = 0; yi <= ySteps; yi++) {
+    const daysRemaining = Math.round((dte * (ySteps - yi)) / ySteps);
+    grid[yi] = new Array(xSteps + 1);
+    for (let xi = 0; xi <= xSteps; xi++) {
+      const price = priceLo + (priceHi - priceLo) * (xi / xSteps);
+      const pnl = window.valueStrategyAtPrice(strategy, price, daysRemaining, strategy.iv || 0.3);
+      grid[yi][xi] = pnl;
+      if (Math.abs(pnl) > absMax) absMax = Math.abs(pnl);
+    }
+  }
+
+  // Draw the heatmap cells
+  const pad = { top: 20, right: 15, bottom: 30, left: 55 };
+  const plotW = W - pad.left - pad.right;
+  const plotH = H - pad.top - pad.bottom;
+  const cellW = plotW / (xSteps + 1);
+  const cellH = plotH / (ySteps + 1);
+
+  ctx.fillStyle = '#111118';
+  ctx.fillRect(0, 0, W, H);
+
+  for (let yi = 0; yi <= ySteps; yi++) {
+    for (let xi = 0; xi <= xSteps; xi++) {
+      const pnl = grid[yi][xi];
+      const norm = Math.max(-1, Math.min(1, pnl / absMax));
+      let r, g, b;
+      if (norm >= 0) {
+        // 0 → white (#222), positive → green
+        const t = norm;
+        r = Math.round(34 + (76 - 34) * t);
+        g = Math.round(34 + (175 - 34) * t);
+        b = Math.round(40 + (80 - 40) * t);
+      } else {
+        // 0 → white-ish, negative → red
+        const t = -norm;
+        r = Math.round(34 + (244 - 34) * t);
+        g = Math.round(34 + (67 - 34) * t);
+        b = Math.round(40 + (54 - 40) * t);
+      }
+      ctx.fillStyle = `rgb(${r},${g},${b})`;
+      ctx.fillRect(pad.left + xi * cellW, pad.top + yi * cellH, cellW + 1, cellH + 1);
+    }
+  }
+
+  // Overlay current spot as a vertical line (green-yellow)
+  if (typeof lastResult !== 'undefined' && lastResult && lastResult.price) {
+    const spotX = pad.left + ((lastResult.price - priceLo) / (priceHi - priceLo)) * plotW;
+    if (spotX >= pad.left && spotX <= W - pad.right) {
+      ctx.strokeStyle = '#FFEB3B';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(spotX, pad.top);
+      ctx.lineTo(spotX, H - pad.bottom);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+  // Today row at the top (yi=0) — already at top
+  // Expiry row at the bottom
+
+  // Axis labels
+  ctx.fillStyle = '#888'; ctx.font = '9px Inter, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('Stock Price', W / 2, H - 5);
+  [priceLo, (priceLo + priceHi) / 2, priceHi].forEach(p => {
+    const x = pad.left + ((p - priceLo) / (priceHi - priceLo)) * plotW;
+    ctx.fillText('$' + p.toFixed(0), x, H - 15);
+  });
+  ctx.textAlign = 'right';
+  ctx.fillText('Today', pad.left - 5, pad.top + 8);
+  ctx.fillText('Expiry', pad.left - 5, H - pad.bottom - 2);
+
+  // Color legend
+  ctx.fillStyle = '#888'; ctx.font = '9px Inter, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('Loss', pad.left, pad.top - 5);
+  ctx.textAlign = 'right';
+  ctx.fillText('Profit', W - pad.right, pad.top - 5);
+  ctx.fillStyle = '#f44336';
+  ctx.fillRect(pad.left + 25, pad.top - 12, 8, 8);
+  ctx.fillStyle = '#4caf50';
+  ctx.fillRect(W - pad.right - 33, pad.top - 12, 8, 8);
 }
 
 // ===== SAVED STRATEGIES =====
@@ -2838,7 +3333,31 @@ function renderSavedSection() {
   const container = document.getElementById('saved-section');
   if (!container) return;
   if (!userSavedStrategies.length) { container.innerHTML = ''; return; }
-  let html = '<div class="saved-title">Saved Strategies</div><div class="strat-cards">';
+
+  // Phase 3.2 — Aggregate portfolio greeks across saved strategies
+  let netDelta = 0, netGamma = 0, netTheta = 0, netVega = 0;
+  userSavedStrategies.forEach(s => {
+    // Try to estimate per-leg greeks from stored data — saved strategies don't carry full greek state
+    // For an MVP, sum sentiment-weighted contributions: bullish = +1Δ proxy, bearish = -1Δ
+    // Real implementation would re-fetch the chain but for the saved view we use a coarse heuristic.
+    if (s.legs && s.legs.length) {
+      s.legs.forEach(l => {
+        const sign = (l.action === 'Buy' || l.action === 'Hold') ? 1 : -1;
+        const qty = l.qty || 1;
+        if (l.type === 'Call') { netDelta += sign * qty * 0.5; netVega += sign * qty * 0.1; netTheta -= sign * qty * 0.05; }
+        else if (l.type === 'Put') { netDelta -= sign * qty * 0.5; netVega += sign * qty * 0.1; netTheta -= sign * qty * 0.05; }
+        else if (l.type === 'Stock') { netDelta += sign * qty * 1.0; }
+      });
+    }
+  });
+  const portfolioGreeksHtml = `<div class="portfolio-greeks" data-testid="portfolio-greeks">
+    <div class="pg-cell"><div class="pg-label">Net &Delta;</div><div class="pg-value" style="color:${netDelta >= 0 ? 'var(--green)' : 'var(--red)'}">${netDelta >= 0 ? '+' : ''}${netDelta.toFixed(1)}</div></div>
+    <div class="pg-cell"><div class="pg-label">Net &Gamma;</div><div class="pg-value">${netGamma.toFixed(2)}</div></div>
+    <div class="pg-cell"><div class="pg-label">Net &Theta;</div><div class="pg-value" style="color:${netTheta >= 0 ? 'var(--green)' : 'var(--red)'}">${netTheta >= 0 ? '+' : ''}${netTheta.toFixed(2)}</div></div>
+    <div class="pg-cell"><div class="pg-label">Net &nu;</div><div class="pg-value">${netVega >= 0 ? '+' : ''}${netVega.toFixed(2)}</div></div>
+  </div>`;
+
+  let html = '<div class="saved-title">Saved Strategies</div>' + portfolioGreeksHtml + '<div class="strat-cards">';
   userSavedStrategies.forEach(s => {
     const legsText = s.legs.filter(l => l.type !== 'Stock').map(l => `${l.action} ${l.qty > 1 ? l.qty + 'x ' : ''}${l.strike} ${l.type}`).join(' | ');
     html += `<div class="strat-card" style="border-left:2px solid var(--accent)">
@@ -2953,6 +3472,27 @@ renderRecentTickers();
 
 // ===== WATCHLIST =====
 const WATCHLIST_KEY = 'optionsranker_watchlist';
+const ACCOUNT_SIZE_KEY = 'optionsranker_account_size';
+function getAccountSize() {
+  try {
+    const v = parseFloat(localStorage.getItem(ACCOUNT_SIZE_KEY));
+    return (isNaN(v) || v <= 0) ? 10000 : v;
+  } catch (e) { return 10000; }
+}
+function setAccountSize(v) {
+  try {
+    const n = parseFloat(v);
+    if (!isNaN(n) && n > 0) {
+      localStorage.setItem(ACCOUNT_SIZE_KEY, String(n));
+      const disp = document.getElementById('account-size-display');
+      if (disp) disp.textContent = '($' + n.toLocaleString() + ' — Kelly sizing capped at 2%)';
+      // Re-render results if any are showing
+      if (typeof lastResult !== 'undefined' && lastResult) {
+        try { renderResults(lastResult); } catch (e) { }
+      }
+    }
+  } catch (e) { }
+}
 const WATCHLIST_MAX = 20;
 
 function getWatchlist() {
@@ -3061,6 +3601,119 @@ document.getElementById('watchlist-clear')?.addEventListener('click', () => {
 });
 
 renderWatchlist();
+
+// ===== WHEEL TRACKER (Phase 3.5) =====
+const WHEEL_KEY = 'optionsranker_wheels';
+
+function getWheels() {
+  try { return JSON.parse(localStorage.getItem(WHEEL_KEY) || '[]'); } catch (e) { return []; }
+}
+function saveWheels(list) {
+  try { localStorage.setItem(WHEEL_KEY, JSON.stringify(list)); } catch (e) {}
+}
+function addWheel() {
+  const ticker = (prompt('Ticker (e.g. AAPL):') || '').toUpperCase().trim();
+  if (!/^[A-Z0-9.\-]{1,8}$/.test(ticker)) return;
+  const strike = parseFloat(prompt('CSP strike:'));
+  if (isNaN(strike) || strike <= 0) return;
+  const premium = parseFloat(prompt('Premium received per share:'));
+  if (isNaN(premium) || premium <= 0) return;
+  const wheels = getWheels();
+  wheels.unshift({
+    id: 'w' + Date.now(),
+    ticker, strike, premium,
+    state: 'csp_open', // csp_open → csp_assigned → cc_open → cc_called → next_csp
+    cycleProfit: premium * 100,
+    history: [{ action: 'CSP opened', amount: premium * 100, ts: Date.now() }],
+    createdAt: Date.now(),
+  });
+  saveWheels(wheels);
+  renderWheels();
+}
+function advanceWheel(id, action) {
+  const wheels = getWheels();
+  const w = wheels.find(x => x.id === id);
+  if (!w) return;
+  if (action === 'csp_expire') {
+    w.history.push({ action: 'CSP expired worthless', amount: 0, ts: Date.now() });
+    w.state = 'csp_open';
+    const newPrem = parseFloat(prompt('New CSP premium received per share:'));
+    if (!isNaN(newPrem) && newPrem > 0) {
+      w.cycleProfit += newPrem * 100;
+      w.history.push({ action: 'New CSP opened', amount: newPrem * 100, ts: Date.now() });
+    }
+  } else if (action === 'csp_assign') {
+    w.history.push({ action: 'CSP assigned — got shares', amount: 0, ts: Date.now() });
+    w.state = 'cc_open';
+    const ccPrem = parseFloat(prompt('CC premium received per share:'));
+    if (!isNaN(ccPrem) && ccPrem > 0) {
+      w.cycleProfit += ccPrem * 100;
+      w.history.push({ action: 'CC opened', amount: ccPrem * 100, ts: Date.now() });
+    }
+  } else if (action === 'cc_expire') {
+    w.history.push({ action: 'CC expired worthless', amount: 0, ts: Date.now() });
+    const newPrem = parseFloat(prompt('New CC premium received per share:'));
+    if (!isNaN(newPrem) && newPrem > 0) {
+      w.cycleProfit += newPrem * 100;
+      w.history.push({ action: 'New CC opened', amount: newPrem * 100, ts: Date.now() });
+    }
+  } else if (action === 'cc_called') {
+    w.history.push({ action: 'CC called away — back to cash', amount: 0, ts: Date.now() });
+    w.state = 'csp_open';
+    const newPrem = parseFloat(prompt('Next CSP premium received per share:'));
+    if (!isNaN(newPrem) && newPrem > 0) {
+      w.cycleProfit += newPrem * 100;
+      w.history.push({ action: 'New CSP opened', amount: newPrem * 100, ts: Date.now() });
+    }
+  } else if (action === 'close') {
+    if (!confirm('Close this wheel cycle?')) return;
+    const idx = wheels.findIndex(x => x.id === id);
+    wheels.splice(idx, 1);
+  }
+  saveWheels(wheels);
+  renderWheels();
+}
+function renderWheels() {
+  const container = document.getElementById('wheel-tracker');
+  if (!container) return;
+  const wheels = getWheels();
+  let html = '<div class="saved-title" style="display:flex;justify-content:space-between;align-items:center"><span>\uD83C\uDFA1 Wheel Tracker</span>'
+    + '<button onclick="addWheel()" style="background:var(--accent);color:#000;border:none;padding:4px 12px;border-radius:4px;font-weight:700;font-size:11px;cursor:pointer;font-family:inherit">+ New Wheel</button></div>';
+  if (!wheels.length) {
+    html += '<div style="font-size:11px;color:var(--dim);padding:8px 0">No active wheels. Track your CSP \u2192 assignment \u2192 CC cycles.</div>';
+  } else {
+    wheels.forEach(w => {
+      const stateLabel = { csp_open: 'CSP Open', csp_assigned: 'Assigned', cc_open: 'CC Open', cc_called: 'Called Away' }[w.state] || w.state;
+      let actions = '';
+      if (w.state === 'csp_open') {
+        actions = `<button onclick="advanceWheel('${w.id}','csp_expire')">CSP Expired</button><button onclick="advanceWheel('${w.id}','csp_assign')">CSP Assigned</button>`;
+      } else if (w.state === 'cc_open') {
+        actions = `<button onclick="advanceWheel('${w.id}','cc_expire')">CC Expired</button><button onclick="advanceWheel('${w.id}','cc_called')">CC Called</button>`;
+      }
+      actions += `<button onclick="advanceWheel('${w.id}','close')">Close Wheel</button>`;
+      html += `<div class="wheel-card" data-testid="wheel-card">
+        <div class="wc-head">
+          <span class="wc-ticker">${w.ticker} \u2014 $${w.strike}</span>
+          <span class="wc-state">${stateLabel}</span>
+        </div>
+        <div class="wc-detail">Cycle profit: <span class="wc-profit" style="color:var(--green)">+$${w.cycleProfit.toFixed(0)}</span> &middot; ${w.history.length} actions</div>
+        <div class="wc-actions">${actions}</div>
+      </div>`;
+    });
+  }
+  container.innerHTML = html;
+}
+
+// Initialize account-size input from localStorage
+(function initAccountSize() {
+  try {
+    const v = getAccountSize();
+    const inp = document.getElementById('account-size-input');
+    if (inp) inp.value = v;
+    const disp = document.getElementById('account-size-display');
+    if (disp) disp.textContent = '($' + v.toLocaleString() + ' — Kelly sizing capped at 2%)';
+  } catch (e) {}
+})();
 
 // ===== AUTH =====
 const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
@@ -3402,8 +4055,47 @@ async function loadMarketPulse() {
 
     // Compute overall score (0-3 signals bullish)
     const bullishCount = (spyAbove200 ? 1 : 0) + (vixFallingAfterSpike || (!vixSpike && vixCurrent < 20) ? 1 : 0) + (breadthImproving ? 1 : 0);
-    // Cache for exit plan engine
-    window._lastMarketPulse = { bullishCount, computedAt: Date.now() };
+
+    // Phase 1.3 — VRP (Variance Risk Premium): VIX / SPY 20-day realized vol
+    let vrp = null;
+    let realizedVol20 = null;
+    try {
+      if (window.computeRealizedVol && spyCloses.length >= 21) {
+        realizedVol20 = window.computeRealizedVol(spyCloses.slice(-21));
+        if (realizedVol20 && window.computeVRP) {
+          vrp = window.computeVRP(vixCurrent, realizedVol20);
+        }
+      }
+    } catch (e) { }
+
+    // Phase 2.1 — GEX (Gamma Exposure) for SPY: fetch the nearest expiration chain and compute total gamma exposure
+    let gex = null;
+    try {
+      if (window.computeGEX) {
+        // Pull SPY chain — use the same /api/options endpoint as the main analyzer
+        const spyChainResp = await fetch('/api/options/SPY').then(r => r.json()).catch(() => null);
+        const spyData = spyChainResp?.optionChain?.result?.[0];
+        const expirations = spyData?.expirationDates || [];
+        // Find nearest expiration with at least 20 DTE (avoid weeklies for stability)
+        const nowSec = Math.floor(Date.now() / 1000);
+        const targetExp = expirations.find(e => (e - nowSec) / 86400 >= 20 && (e - nowSec) / 86400 <= 60) || expirations[0];
+        if (targetExp) {
+          const spyExpResp = await fetch(`/api/options/SPY?date=${targetExp}`).then(r => r.json()).catch(() => null);
+          const spyExpData = spyExpResp?.optionChain?.result?.[0];
+          const spyOpts = spyExpData?.options?.[0];
+          const spotPriceSpy = spyExpData?.quote?.regularMarketPrice || spyPrice;
+          if (spyOpts) {
+            const T = Math.max(0.01, (targetExp - nowSec) / (365 * 86400));
+            const allIVsSpy = [...(spyOpts.calls || []), ...(spyOpts.puts || [])].map(c => c.impliedVolatility).filter(v => v > 0);
+            const avgIVSpy = allIVsSpy.length ? allIVsSpy.reduce((a, b) => a + b, 0) / allIVsSpy.length : 0.2;
+            gex = window.computeGEX({ calls: spyOpts.calls, puts: spyOpts.puts, _T: T, _avgIV: avgIVSpy }, spotPriceSpy);
+          }
+        }
+      }
+    } catch (e) { }
+
+    // Cache for exit plan engine + analyzer scoring
+    window._lastMarketPulse = { bullishCount, vrp, realizedVol20, gex, computedAt: Date.now() };
     const scoreColor = bullishCount >= 3 ? 'var(--green)' : bullishCount >= 2 ? 'var(--orange)' : 'var(--red)';
     const scoreFillColor = bullishCount >= 3 ? '#4caf50' : bullishCount >= 2 ? '#FF9800' : '#f44336';
     const overallLabel = bullishCount >= 3 ? 'Conditions favor re-entry — all 3 signals aligned.'
