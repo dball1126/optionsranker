@@ -16,6 +16,9 @@ const {
   skewAdjustedProb,
   computeKellySize,
   computeEarningsCrushEdge,
+  computeMarginRequirement,
+  computeRollCandidates,
+  computeScenarioPnL,
 } = require(path.join(__dirname, '..', 'options-analytics.js'));
 
 const tests = [];
@@ -201,6 +204,125 @@ t('computeEarningsCrushEdge: underpriced -> buy_premium', () => {
 t('computeEarningsCrushEdge: insufficient_data without history', () => {
   const result = computeEarningsCrushEdge(100, 5, []);
   assert.strictEqual(result.recommendation, 'insufficient_data');
+});
+
+// ─────────────────────────────────────────────────────────────
+// computeMarginRequirement (Phase 4.5)
+// ─────────────────────────────────────────────────────────────
+t('computeMarginRequirement: Long Call = full debit', () => {
+  const s = { name: 'Long Call', legs: [{ action: 'Buy', type: 'Call', strike: 100, price: 5, qty: 1 }], maxLoss: 500 };
+  const m = computeMarginRequirement(s, 100);
+  assert.strictEqual(m.type, 'debit');
+  assert.strictEqual(m.dollars, 500);
+});
+
+t('computeMarginRequirement: Bull Call Spread = net debit', () => {
+  const s = {
+    name: 'Bull Call Spread',
+    legs: [
+      { action: 'Buy', type: 'Call', strike: 100, price: 4, qty: 1 },
+      { action: 'Sell', type: 'Call', strike: 105, price: 2, qty: 1 },
+    ],
+    maxLoss: 200,
+  };
+  const m = computeMarginRequirement(s, 100);
+  assert.strictEqual(m.type, 'debit_spread');
+  assert.strictEqual(m.dollars, 200);
+});
+
+t('computeMarginRequirement: Bull Put Spread = width × 100 − credit', () => {
+  // Sell 100P @ $2, buy 95P @ $1 → credit $1 = $100, width $5 → margin $400
+  const s = {
+    name: 'Bull Put Spread',
+    legs: [
+      { action: 'Sell', type: 'Put', strike: 100, price: 2, qty: 1 },
+      { action: 'Buy', type: 'Put', strike: 95, price: 1, qty: 1 },
+    ],
+    maxLoss: 400,
+  };
+  const m = computeMarginRequirement(s, 100);
+  assert.strictEqual(m.type, 'credit_spread');
+  assert.strictEqual(m.dollars, 400);
+});
+
+t('computeMarginRequirement: Iron Condor = max wing − credit', () => {
+  // Both wings $5 wide. Total credit = (1+1) × 100 = $200. Max wing margin = $500 − $200 = $300
+  const s = {
+    name: 'Iron Condor',
+    legs: [
+      { action: 'Sell', type: 'Put', strike: 95, price: 1.5, qty: 1 },
+      { action: 'Buy', type: 'Put', strike: 90, price: 0.5, qty: 1 },
+      { action: 'Sell', type: 'Call', strike: 105, price: 1.5, qty: 1 },
+      { action: 'Buy', type: 'Call', strike: 110, price: 0.5, qty: 1 },
+    ],
+    maxLoss: 300,
+  };
+  const m = computeMarginRequirement(s, 100);
+  assert.strictEqual(m.type, 'iron_condor');
+  assert.strictEqual(m.dollars, 300);
+});
+
+t('computeMarginRequirement: Cash-Secured Put = strike × 100 − credit', () => {
+  // Strike $100, credit $2 = $200 → margin $9800
+  const s = {
+    name: 'Cash-Secured Put',
+    legs: [{ action: 'Sell', type: 'Put', strike: 100, price: 2, qty: 1 }],
+    maxLoss: 9800,
+  };
+  const m = computeMarginRequirement(s, 100);
+  assert.strictEqual(m.type, 'csp');
+  assert.strictEqual(m.dollars, 9800);
+});
+
+// ─────────────────────────────────────────────────────────────
+// computeScenarioPnL
+// ─────────────────────────────────────────────────────────────
+t('computeScenarioPnL: 0% scenario reproduces baseline', () => {
+  const mockValueFn = (s, spot, dte, iv) => spot * 10 + iv * 100 + dte;
+  const s = { name: 'Test', legs: [], iv: 0.3 };
+  const baseline = mockValueFn(s, 100, 30, 0.3);
+  const scenario = computeScenarioPnL(s, 100, 30, { spotPct: 0, ivPct: 0, daysForward: 0 }, mockValueFn);
+  assert.strictEqual(scenario, baseline);
+});
+
+t('computeScenarioPnL: spot scaling applied', () => {
+  const mockValueFn = (s, spot, dte, iv) => spot;  // identity for spot
+  const s = { name: 'Test', legs: [], iv: 0.3 };
+  const result = computeScenarioPnL(s, 100, 30, { spotPct: 5, ivPct: 0, daysForward: 0 }, mockValueFn);
+  assert.strictEqual(result, 105);
+});
+
+// ─────────────────────────────────────────────────────────────
+// computeRollCandidates
+// ─────────────────────────────────────────────────────────────
+t('computeRollCandidates: returns ranked candidates from future chains', () => {
+  const strategy = {
+    name: 'Bull Call Spread',
+    legs: [
+      { action: 'Buy', type: 'Call', strike: 100, price: 4, qty: 1 },
+      { action: 'Sell', type: 'Call', strike: 105, price: 2, qty: 1 },
+    ],
+  };
+  const futureChains = [
+    {
+      expiration: 1234567890, dte: 30, expirationDate: 'May 8',
+      calls: [
+        { strike: 100, bid: 5, ask: 5.2 },
+        { strike: 105, bid: 2.5, ask: 2.7 },
+        { strike: 110, bid: 1, ask: 1.2 },
+      ],
+      puts: [],
+    },
+  ];
+  const candidates = computeRollCandidates(strategy, futureChains, 100);
+  assert.ok(Array.isArray(candidates));
+  assert.ok(candidates.length >= 1);
+  assert.ok(candidates[0].newLegs.length === 2);
+});
+
+t('computeRollCandidates: returns empty for missing chains', () => {
+  const candidates = computeRollCandidates({ name: 'Long Call', legs: [{ action: 'Buy', type: 'Call', strike: 100, price: 5, qty: 1 }] }, [], 100);
+  assert.strictEqual(candidates.length, 0);
 });
 
 // ─────────────────────────────────────────────────────────────

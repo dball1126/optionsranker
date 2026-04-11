@@ -300,6 +300,63 @@ t('ProAnalytics: CSS classes for new features', () => {
 });
 
 // ─────────────────────────────────────────────────────────────
+// Phase 4 + 5.1 (2026-04-11)
+// ─────────────────────────────────────────────────────────────
+t('Phase 4.1: comparison drawer + Compare button + functions', () => {
+  assert.ok(HTML.includes('data-testid="compare-drawer"'), 'compare-drawer testid missing');
+  assert.ok(HTML.includes('id="compare-btn"'), 'compare-btn id missing');
+  assert.ok(HTML.includes('function toggleCompare'), 'toggleCompare missing');
+  assert.ok(HTML.includes('function renderCompareDrawer'), 'renderCompareDrawer missing');
+  assert.ok(HTML.includes('function isInCompare'), 'isInCompare missing');
+  assert.ok(HTML.includes('.compare-card'), 'compare-card CSS missing');
+});
+
+t('Phase 4.2: term structure + volatility cone', () => {
+  assert.ok(HTML.includes('data-testid="term-structure"'), 'term-structure testid missing');
+  assert.ok(HTML.includes('data-testid="volatility-cone"'), 'volatility-cone testid missing');
+  assert.ok(HTML.includes('termStructure'), 'termStructure variable missing');
+  assert.ok(HTML.includes('volCone'), 'volCone variable missing');
+  assert.ok(HTML.includes('.term-row') && HTML.includes('.cone-row'), 'term/cone CSS missing');
+});
+
+t('Phase 4.3: scenario panel + sliders + functions', () => {
+  assert.ok(HTML.includes('data-testid="scenario-panel"'), 'scenario-panel testid missing');
+  assert.ok(HTML.includes('function renderScenarioPanel'), 'renderScenarioPanel missing');
+  assert.ok(HTML.includes('function updateScenario'), 'updateScenario missing');
+  assert.ok(HTML.includes('_scenarioState'), 'scenario state missing');
+  assert.ok(HTML.includes('.scenario-controls'), 'scenario CSS missing');
+});
+
+t('Phase 4.4: roll optimizer wiring', () => {
+  assert.ok(HTML.includes('async function loadRollCandidates'), 'loadRollCandidates missing');
+  assert.ok(HTML.includes('window.computeRollCandidates'), 'computeRollCandidates not referenced');
+  assert.ok(HTML.includes('id="roll-suggestions-content"'), 'roll-suggestions-content placeholder missing');
+  assert.ok(HTML.includes('.roll-card'), 'roll-card CSS missing');
+});
+
+t('Phase 4.5: margin requirement in sizing card', () => {
+  assert.ok(HTML.includes('window.computeMarginRequirement'), 'computeMarginRequirement not referenced');
+  assert.ok(HTML.includes('sc-margin'), 'sc-margin CSS class missing');
+});
+
+t('Phase 5.1: alerts UI + functions + button', () => {
+  assert.ok(HTML.includes('data-testid="alerts-section"'), 'alerts-section testid missing');
+  assert.ok(HTML.includes('id="alert-btn"'), 'alert-btn id missing');
+  assert.ok(HTML.includes('async function loadAlerts'), 'loadAlerts missing');
+  assert.ok(HTML.includes('async function createAlertForStrategy'), 'createAlertForStrategy missing');
+  assert.ok(HTML.includes('async function renderAlertsSection'), 'renderAlertsSection missing');
+  assert.ok(HTML.includes('async function deleteAlert'), 'deleteAlert missing');
+  assert.ok(HTML.includes('/api/alerts'), '/api/alerts endpoint reference missing');
+  assert.ok(HTML.includes('.alert-card'), 'alert-card CSS missing');
+});
+
+t('Phase 4+5: render hooks called from results page', () => {
+  assert.ok(HTML.includes('renderCompareDrawer()'), 'renderCompareDrawer not invoked');
+  assert.ok(HTML.includes('renderScenarioPanel()'), 'renderScenarioPanel not invoked');
+  assert.ok(HTML.includes('renderAlertsSection()'), 'renderAlertsSection not invoked');
+});
+
+// ─────────────────────────────────────────────────────────────
 // Runner
 // ─────────────────────────────────────────────────────────────
 (async () => {

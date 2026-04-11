@@ -1348,6 +1348,7 @@ body {
 .sizing-card .sc-line { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .sizing-card .sc-contracts { font-weight: 700; font-size: 14px; color: var(--accent); }
 .sizing-card .sc-detail { font-size: 10px; color: var(--dim); }
+.sizing-card .sc-margin { font-size: 9px; color: var(--dimmer); margin-top: 4px; padding-top: 4px; border-top: 1px dashed var(--border); }
 
 /* ===== Settings: account size ===== */
 .settings-row {
@@ -1410,6 +1411,73 @@ body {
   background: var(--bg4); color: var(--text); border: none; padding: 4px 10px;
   border-radius: 4px; font-size: 10px; cursor: pointer; font-family: inherit;
 }
+
+/* ===== Phase 4.1 — Strategy comparison drawer ===== */
+.compare-drawer { margin-top: 12px; }
+.compare-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+}
+.compare-card {
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 6px;
+  padding: 10px;
+}
+.compare-card .cc-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.compare-card .cc-name { font-weight: 700; font-size: 12px; color: var(--text); }
+.compare-card .cc-stat-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px;
+}
+.cc-stat { background: var(--bg2); border-radius: 4px; padding: 5px; text-align: center; }
+.cc-stat-label { font-size: 9px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.5px; }
+.cc-stat-val { font-size: 12px; font-weight: 700; color: var(--text); margin-top: 2px; }
+.compare-card .cc-exit {
+  margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border);
+  font-size: 10px; color: var(--accent);
+}
+
+/* ===== Phase 4.3 — Scenario panel ===== */
+.scenario-panel { margin-top: 12px; }
+.scenario-controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 8px 0; }
+.sc-slider label { font-size: 10px; color: var(--dim); display: block; margin-bottom: 4px; }
+.sc-slider strong { color: var(--accent); font-size: 12px; }
+.sc-slider input[type=range] { width: 100%; accent-color: var(--accent); }
+.scenario-result {
+  padding: 8px 10px; background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 6px; text-align: center; margin-bottom: 8px;
+}
+.sr-label { font-size: 10px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.5px; }
+.sr-value { font-size: 18px; font-weight: 700; margin-left: 6px; }
+.scenario-rows { display: flex; flex-direction: column; gap: 4px; }
+.scenario-row {
+  display: flex; justify-content: space-between; padding: 6px 10px;
+  background: var(--bg3); border-radius: 4px; font-size: 11px;
+}
+
+/* ===== Phase 4.4 — Roll cards ===== */
+.roll-card {
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 6px;
+  padding: 8px 10px; margin: 4px 0; font-size: 11px;
+}
+
+/* ===== Phase 5.1 — Alerts section ===== */
+.alerts-section { margin-top: 12px; }
+.alert-card {
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 6px;
+  padding: 8px 10px; margin: 4px 0;
+}
+
+/* ===== Phase 4.2 — Term structure + Vol cone ===== */
+.term-row, .cone-row {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border);
+  font-size: 10px;
+}
+.term-label, .cone-title { color: var(--dim); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+.term-trend { font-weight: 700; }
+.cone-cell { display: inline-flex; flex-direction: column; align-items: center; padding: 2px 6px; background: var(--bg3); border-radius: 4px; }
+.cone-label { font-size: 8px; color: var(--dim); text-transform: uppercase; }
+.cone-val { font-size: 11px; font-weight: 700; }
+.cone-assessment { margin-left: auto; font-weight: 700; }
 </style>
 </head>
 <body>
@@ -2194,6 +2262,48 @@ async function analyzeOptionsStrategies(symbol) {
     }
   } catch (e) { }
 
+  // Phase 4.2 — Term structure + Volatility cone
+  // Term structure: average IV per expiration across allChainData
+  let termStructure = null;
+  try {
+    if (allChainData.length >= 2) {
+      termStructure = allChainData.map(cd => {
+        const ivs = [...(cd.calls || []), ...(cd.puts || [])].map(c => c.impliedVolatility).filter(v => v > 0.01 && v < 5);
+        const meanIV = ivs.length ? ivs.reduce((a, b) => a + b, 0) / ivs.length : 0;
+        return {
+          expiration: cd.expiration,
+          dte: Math.max(1, Math.round((cd.expiration - now) / 86400)),
+          iv: meanIV,
+        };
+      });
+    }
+  } catch (e) { }
+
+  // Volatility cone: current IV vs HV percentile bands at multiple lookbacks
+  let volCone = null;
+  try {
+    const histResp2 = await fetch(`/api/chart/${symbol}?range=1y&interval=1d`).then(r => r.json()).catch(() => null);
+    const closes2 = histResp2?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(v => v != null);
+    if (closes2 && closes2.length >= 60 && window.computeRealizedVol) {
+      const lookbacks = [21, 63, 126, 252];  // 1mo, 3mo, 6mo, 1yr trading days
+      const cones = lookbacks.map(N => {
+        if (closes2.length < N + 1) return null;
+        const slice = closes2.slice(-(N + 1));
+        const rv = window.computeRealizedVol(slice);
+        return { N, rv, label: N === 21 ? '1m' : N === 63 ? '3m' : N === 126 ? '6m' : '1y' };
+      }).filter(x => x);
+      if (cones.length) {
+        const currentIV = avgIV;
+        volCone = {
+          currentIV,
+          cones,
+          assessment: currentIV > Math.max(...cones.map(c => c.rv)) * 1.2 ? 'rich'
+            : currentIV < Math.min(...cones.map(c => c.rv)) * 0.8 ? 'cheap' : 'fair',
+        };
+      }
+    }
+  } catch (e) { }
+
   // Phase 2.2 — Earnings IV Crush edge (only if earnings is in range)
   let earningsCrush = null;
   try {
@@ -2369,6 +2479,7 @@ async function analyzeOptionsStrategies(symbol) {
     strategies: unique, ivRank, avgIV, ivSource, price: S, chainData: allChainData,
     expirations, symbol, daysUntilEarnings, marketState, regularMarketTime, impliedMove,
     skew: skewInfo, vrp, gex, earningsCrush,
+    termStructure, volCone,
     disqualifiedCount: _dqCount,
   };
 }
@@ -2436,7 +2547,7 @@ function isStrategyLocked(index) {
 
 function renderResults(result) {
   lastResult = result;
-  const { strategies, ivRank, avgIV, ivSource, price, chainData, symbol, daysUntilEarnings, marketState, regularMarketTime, impliedMove, skew, vrp, gex, earningsCrush, disqualifiedCount } = result;
+  const { strategies, ivRank, avgIV, ivSource, price, chainData, symbol, daysUntilEarnings, marketState, regularMarketTime, impliedMove, skew, vrp, gex, earningsCrush, termStructure, volCone, disqualifiedCount } = result;
 
   document.getElementById('results-symbol').textContent = symbol;
   document.getElementById('results-price').textContent = '$' + price.toFixed(2);
@@ -2543,6 +2654,43 @@ function renderResults(result) {
   if (badges.length) {
     analyticsHtml = `<div class="analytics-row" data-testid="analytics-row">${badges.join('')}</div>`;
   }
+
+  // Phase 4.2 — Term structure sparkline
+  let termHtml = '';
+  if (termStructure && termStructure.length >= 2) {
+    const ivs = termStructure.map(t => t.iv);
+    const minIV = Math.min(...ivs), maxIV = Math.max(...ivs);
+    const range = maxIV - minIV || 0.001;
+    const trend = ivs[ivs.length - 1] > ivs[0] ? 'contango' : 'backwardation';
+    const trendColor = trend === 'contango' ? 'var(--green)' : 'var(--orange)';
+    const trendLabel = trend === 'contango' ? 'Contango (healthy)' : 'Backwardation (stress)';
+    const sparkW = 80, sparkH = 18;
+    let path = '';
+    termStructure.forEach((t, i) => {
+      const x = (i / (termStructure.length - 1)) * sparkW;
+      const y = sparkH - ((t.iv - minIV) / range) * sparkH;
+      path += (i === 0 ? 'M' : 'L') + x.toFixed(1) + ',' + y.toFixed(1);
+    });
+    termHtml = `<div class="term-row" data-testid="term-structure">
+      <span class="term-label">Term Structure</span>
+      <svg width="${sparkW}" height="${sparkH}" style="vertical-align:middle"><path d="${path}" fill="none" stroke="${trendColor}" stroke-width="1.5"/></svg>
+      <span class="term-trend" style="color:${trendColor}">${trendLabel}</span>
+    </div>`;
+  }
+
+  // Phase 4.2 — Volatility cone
+  let coneHtml = '';
+  if (volCone && volCone.cones && volCone.cones.length) {
+    const assessmentColor = volCone.assessment === 'rich' ? 'var(--red)' : volCone.assessment === 'cheap' ? 'var(--green)' : 'var(--dim)';
+    const assessmentLabel = volCone.assessment === 'rich' ? 'IV rich vs realized' : volCone.assessment === 'cheap' ? 'IV cheap vs realized' : 'IV fair vs realized';
+    const coneRows = volCone.cones.map(c => `<span class="cone-cell"><span class="cone-label">${c.label}</span><span class="cone-val">${(c.rv * 100).toFixed(0)}%</span></span>`).join('');
+    coneHtml = `<div class="cone-row" data-testid="volatility-cone">
+      <span class="cone-title">Vol Cone</span>
+      ${coneRows}
+      <span class="cone-cell"><span class="cone-label">IV</span><span class="cone-val" style="color:${assessmentColor}">${(volCone.currentIV * 100).toFixed(0)}%</span></span>
+      <span class="cone-assessment" style="color:${assessmentColor}">${assessmentLabel}</span>
+    </div>`;
+  }
   // Phase 1.5 — disqualifier note
   let dqHtml = '';
   if (disqualifiedCount > 0) {
@@ -2555,6 +2703,8 @@ function renderResults(result) {
     <div class="iv-hint">${ivHint} | Avg IV: ${(avgIV * 100).toFixed(1)}%</div>
     ${impliedMoveHtml}
     ${analyticsHtml}
+    ${termHtml}
+    ${coneHtml}
     ${dqHtml}
   </div>`;
 
@@ -2573,7 +2723,13 @@ function renderResults(result) {
 
   // Saved section
   html += '<div id="saved-section"></div>';
+  // Phase 4.1 — Comparison drawer
+  html += '<div id="compare-drawer" class="compare-drawer" data-testid="compare-drawer"></div>';
+  // Phase 4.3 — Multi-position scenario panel
+  html += '<div id="scenario-panel" class="scenario-panel" data-testid="scenario-panel"></div>';
   html += '<div id="wheel-tracker" class="wheel-tracker" data-testid="wheel-tracker"></div>';
+  // Phase 5.1 — Alerts section
+  html += '<div id="alerts-section" class="alerts-section" data-testid="alerts-section"></div>';
 
   // Cards
   html += '<div class="strat-cards" id="strat-cards">';
@@ -2604,8 +2760,13 @@ function renderResults(result) {
   sidePanel.innerHTML = sideHtml;
 
   // Load saved strategies
-  loadSavedStrategies().then(() => renderSavedSection());
+  loadSavedStrategies().then(() => {
+    renderSavedSection();
+    renderScenarioPanel();
+  });
   renderWheels();
+  renderCompareDrawer();
+  renderAlertsSection();
 }
 
 function renderScoreBreakdown(components) {
@@ -2671,13 +2832,22 @@ function renderStrategyCards(strategies) {
   }).join('');
 }
 
-// Phase 2.4 — Position sizing card
+// Phase 2.4 + 4.5 — Position sizing card with margin requirement
 function renderSizingCard(s) {
   if (!window.computeKellySize || !s.maxProfit || !s.maxLoss || !isFinite(s.maxProfit) || !isFinite(s.maxLoss)) return '';
   const accountSize = getAccountSize();
   const sizing = window.computeKellySize(s.maxProfit, s.maxLoss, s.prob || s.probDisplay, accountSize);
+  // Phase 4.5 — margin requirement per contract
+  const spotPrice = (typeof lastResult !== 'undefined' && lastResult) ? lastResult.price : null;
+  const margin = window.computeMarginRequirement ? window.computeMarginRequirement(s, spotPrice) : null;
+  let marginLine = '';
+  if (margin && margin.dollars > 0) {
+    const totalMargin = margin.dollars * (sizing.contracts || 1);
+    const marginPct = (totalMargin / accountSize * 100).toFixed(1);
+    marginLine = `<div class="sc-margin">Margin: $${margin.dollars.toFixed(0)}/contract \u2014 $${totalMargin.toFixed(0)} total (${marginPct}% BP) \u2014 ${margin.formula}</div>`;
+  }
   if (!sizing.contracts) {
-    return `<div class="sizing-card" data-testid="sizing-card"><div class="sc-title">Suggested Size</div><div class="sc-line"><span class="sc-contracts">0 contracts</span><span class="sc-detail">Negative edge — skip</span></div></div>`;
+    return `<div class="sizing-card" data-testid="sizing-card"><div class="sc-title">Suggested Size</div><div class="sc-line"><span class="sc-contracts">0 contracts</span><span class="sc-detail">Negative edge — skip</span></div>${marginLine}</div>`;
   }
   const pctOfAccount = (sizing.riskDollars / accountSize * 100).toFixed(1);
   return `<div class="sizing-card" data-testid="sizing-card">
@@ -2686,6 +2856,7 @@ function renderSizingCard(s) {
       <span class="sc-contracts">${sizing.contracts} contracts</span>
       <span class="sc-detail">$${sizing.riskDollars.toFixed(0)} risk · ${pctOfAccount}% of $${accountSize.toLocaleString()}</span>
     </div>
+    ${marginLine}
   </div>`;
 }
 
@@ -2847,33 +3018,17 @@ function showDetail(idx) {
     </div>
   </div>`;
 
-  // Phase 3.3 — Roll suggestions when approaching the time stop
+  // Phase 3.3 + 4.4 — Roll suggestions with multi-leg optimizer
   if (s.exitPlan && s.dte != null && s.exitPlan.timeStopDTE != null && s.dte <= s.exitPlan.timeStopDTE + 7) {
     const dteToTimestop = Math.max(0, s.dte - s.exitPlan.timeStopDTE);
     const isInside = dteToTimestop <= 1;
-    const debit = s.legs.reduce((a, l) => { const m = (l.action === 'Buy' || l.action === 'Hold') ? -1 : 1; return a + (l.price || 0) * m * (l.qty || 1) * (l.type === 'Stock' ? 1 : 100); }, 0);
-    const closeNowPnl = -debit; // approximate — full mark-to-market would re-fetch
     html += `<div class="modal-section" data-testid="roll-suggestions">
       <h4>${isInside ? '\u26A0 Time Stop Approaching' : 'Manage Position'}</h4>
       <div style="font-size:11px;color:var(--dim);margin-bottom:8px">
         Position is ${isInside ? 'past' : dteToTimestop + ' days from'} the recommended time stop (${s.exitPlan.timeStopDTE} DTE).
       </div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
-        <div style="background:var(--bg3);border-radius:6px;padding:8px;text-align:center">
-          <div style="font-size:9px;color:var(--dim);text-transform:uppercase">Close Now</div>
-          <div style="font-size:13px;font-weight:700;color:${closeNowPnl >= 0 ? 'var(--green)' : 'var(--red)'};margin-top:2px">${closeNowPnl >= 0 ? '+' : ''}$${closeNowPnl.toFixed(0)}</div>
-          <div style="font-size:9px;color:var(--dimmer);margin-top:2px">at entry price approx</div>
-        </div>
-        <div style="background:var(--bg3);border-radius:6px;padding:8px;text-align:center">
-          <div style="font-size:9px;color:var(--dim);text-transform:uppercase">Roll Out</div>
-          <div style="font-size:13px;font-weight:700;color:var(--accent);margin-top:2px">+30 DTE</div>
-          <div style="font-size:9px;color:var(--dimmer);margin-top:2px">Same strikes, next month</div>
-        </div>
-        <div style="background:var(--bg3);border-radius:6px;padding:8px;text-align:center">
-          <div style="font-size:9px;color:var(--dim);text-transform:uppercase">Hold</div>
-          <div style="font-size:13px;font-weight:700;color:var(--orange);margin-top:2px">Risk</div>
-          <div style="font-size:9px;color:var(--dimmer);margin-top:2px">Past time stop</div>
-        </div>
+      <div id="roll-suggestions-content" data-testid="roll-suggestions-content">
+        <div style="font-size:11px;color:var(--dim)">Computing rolls...</div>
       </div>
     </div>`;
   }
@@ -2881,9 +3036,12 @@ function showDetail(idx) {
   // Save button (only for paid users)
   if (userSubscription.active) {
     const isSaved = userSavedStrategies.some(sv => sv.strategy_name === s.name && sv.symbol === lastResult.symbol && JSON.stringify(sv.legs.map(l=>l.strike)) === JSON.stringify(s.legs.filter(l=>l.type!=='Stock').map(l=>l.strike)));
+    const inCompare = isInCompare(s);
     html += `<div style="text-align:center;padding:10px 0;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
       <button id="save-btn" onclick="event.stopPropagation();saveStrategy(window._modalStrategy)" style="background:${isSaved ? 'var(--bg3)' : 'var(--accent)'};color:${isSaved ? 'var(--dim)' : '#000'};border:none;padding:10px 28px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit" ${isSaved ? 'disabled' : ''}>${isSaved ? 'Saved' : 'Save Strategy'}</button>
       <button id="optimize-btn" onclick="event.stopPropagation();openTimingOptimizer(window._modalStrategy)" style="background:var(--bg3);color:var(--accent);border:1px solid var(--accent);padding:10px 28px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit">\u26A1 Optimize Timing</button>
+      <button id="compare-btn" onclick="event.stopPropagation();toggleCompare(window._modalStrategy)" style="background:var(--bg3);color:${inCompare ? 'var(--orange)' : 'var(--text)'};border:1px solid ${inCompare ? 'var(--orange)' : 'var(--border)'};padding:10px 28px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit">${inCompare ? '\u2713 In Compare' : '\u2295 Compare'}</button>
+      <button id="alert-btn" onclick="event.stopPropagation();createAlertForStrategy(window._modalStrategy)" style="background:var(--bg3);color:var(--text);border:1px solid var(--border);padding:10px 28px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit">\uD83D\uDD14 Alert Me</button>
     </div>
     <div id="timing-optimizer-section" style="display:none"></div>`;
   }
@@ -2894,6 +3052,10 @@ function showDetail(idx) {
   setTimeout(() => drawPayoffDiagram(s), 50);
   // Fetch similar trades async (don't block render)
   loadSimilarTrades(s);
+  // Phase 4.4 — async roll candidates if the section exists
+  if (document.getElementById('roll-suggestions-content')) {
+    loadRollCandidates(s);
+  }
 }
 
 // Phase 3.1 — fetch + render similar trades
@@ -2926,6 +3088,284 @@ async function loadSimilarTrades(strategy) {
 
 function closeDetailModal() {
   document.getElementById('detail-modal').classList.remove('active');
+}
+
+// ===== Phase 4.1 — Strategy Comparison =====
+let _compareList = [];
+
+function strategyCompareKey(s) {
+  if (!s) return '';
+  const strikes = s.legs.filter(l => l.type !== 'Stock').map(l => l.strike).join(',');
+  return `${s.name}|${strikes}|${s.dte || ''}`;
+}
+
+function isInCompare(s) {
+  return _compareList.some(c => strategyCompareKey(c) === strategyCompareKey(s));
+}
+
+function toggleCompare(s) {
+  if (!s) return;
+  const key = strategyCompareKey(s);
+  const idx = _compareList.findIndex(c => strategyCompareKey(c) === key);
+  if (idx >= 0) {
+    _compareList.splice(idx, 1);
+  } else {
+    if (_compareList.length >= 3) {
+      _compareList.shift(); // FIFO drop
+    }
+    _compareList.push(s);
+  }
+  renderCompareDrawer();
+  // Refresh the modal so the button label updates
+  if (window._modalStrategy && strategyCompareKey(window._modalStrategy) === key) {
+    showDetail(s.idxInResult || 0);
+  }
+}
+
+function clearCompare() {
+  _compareList = [];
+  renderCompareDrawer();
+}
+
+function renderCompareDrawer() {
+  const container = document.getElementById('compare-drawer');
+  if (!container) return;
+  if (!_compareList.length) {
+    container.innerHTML = '';
+    return;
+  }
+  let html = '<div class="saved-title" style="display:flex;justify-content:space-between;align-items:center"><span>\u2295 Strategy Comparison (' + _compareList.length + '/3)</span>'
+    + '<button onclick="clearCompare()" style="background:none;border:1px solid var(--border);color:var(--dim);padding:4px 10px;border-radius:4px;font-size:10px;cursor:pointer">Clear</button></div>';
+  html += '<div class="compare-grid">';
+  _compareList.forEach((s, i) => {
+    const accountSize = getAccountSize();
+    const sizing = window.computeKellySize ? window.computeKellySize(s.maxProfit, s.maxLoss, s.prob || s.probDisplay, accountSize) : null;
+    const margin = window.computeMarginRequirement ? window.computeMarginRequirement(s, lastResult ? lastResult.price : null) : null;
+    const maxP = s.maxProfit === Infinity ? 'Unlimited' : '$' + s.maxProfit.toFixed(0);
+    const maxL = s.maxLoss === Infinity ? 'Unlimited' : '$' + s.maxLoss.toFixed(0);
+    html += `<div class="compare-card" data-testid="compare-card">
+      <div class="cc-head">
+        <div class="cc-name">${s.name}</div>
+        <button onclick="toggleCompare(${JSON.stringify(s).replace(/"/g, '&quot;')})" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:14px">&#10005;</button>
+      </div>
+      <div class="cc-stat-grid">
+        <div class="cc-stat"><div class="cc-stat-label">Score</div><div class="cc-stat-val">${s.score}</div></div>
+        <div class="cc-stat"><div class="cc-stat-label">POP</div><div class="cc-stat-val">${(s.probDisplay * 100).toFixed(0)}%</div></div>
+        <div class="cc-stat"><div class="cc-stat-label">Max P</div><div class="cc-stat-val" style="color:var(--green)">${maxP}</div></div>
+        <div class="cc-stat"><div class="cc-stat-label">Max L</div><div class="cc-stat-val" style="color:var(--red)">${maxL}</div></div>
+        <div class="cc-stat"><div class="cc-stat-label">DTE</div><div class="cc-stat-val">${s.dte || '\u2014'}</div></div>
+        <div class="cc-stat"><div class="cc-stat-label">Sentiment</div><div class="cc-stat-val">${s.sentiment || '\u2014'}</div></div>
+        ${sizing ? `<div class="cc-stat"><div class="cc-stat-label">Suggest</div><div class="cc-stat-val">${sizing.contracts} ct</div></div>` : ''}
+        ${margin ? `<div class="cc-stat"><div class="cc-stat-label">Margin</div><div class="cc-stat-val">$${margin.dollars.toFixed(0)}</div></div>` : ''}
+      </div>
+      ${s.exitPlan ? `<div class="cc-exit">Hold ~${s.exitPlan.holdDays}d \u00B7 Target +$${s.exitPlan.profitTarget.toFixed(0)}</div>` : ''}
+    </div>`;
+  });
+  html += '</div>';
+  // Winner indicator
+  if (_compareList.length >= 2) {
+    const top = [..._compareList].sort((a, b) => b.score - a.score)[0];
+    html += `<div style="text-align:center;font-size:11px;color:var(--accent);padding:6px 0;font-weight:700">Top by score: ${top.name} (${top.score})</div>`;
+  }
+  container.innerHTML = html;
+}
+
+// ===== Phase 4.3 — Multi-position scenario analysis =====
+let _scenarioState = { spotPct: 0, ivPct: 0, daysForward: 0 };
+
+function updateScenario(field, val) {
+  _scenarioState[field] = parseFloat(val) || 0;
+  renderScenarioPanel();
+}
+
+function renderScenarioPanel() {
+  const container = document.getElementById('scenario-panel');
+  if (!container) return;
+  if (!userSavedStrategies.length) {
+    container.innerHTML = '';
+    return;
+  }
+  // Re-price each saved position via valueStrategyAtPrice
+  let totalNow = 0;
+  let totalScenario = 0;
+  const rows = [];
+  userSavedStrategies.forEach(s => {
+    if (!s.legs || !s.legs.length || !window.valueStrategyAtPrice) return;
+    // Saved strategies don't carry the live spot price; use entry_price as a proxy spot baseline
+    // and assume the strategy's strike midpoint is "current spot" — coarse but illustrative
+    const strikes = s.legs.filter(l => l.type !== 'Stock').map(l => l.strike);
+    const midStrike = strikes.length ? strikes.reduce((a, b) => a + b, 0) / strikes.length : 100;
+    const dte = 21; // assume — could be improved by parsing target_exit_date
+    const synth = { name: s.strategy_name, legs: s.legs, iv: s.iv_at_entry || 0.3, dte };
+    const nowPnL = window.valueStrategyAtPrice(synth, midStrike, dte, synth.iv);
+    const scenSpot = midStrike * (1 + _scenarioState.spotPct / 100);
+    const scenIV = synth.iv * (1 + _scenarioState.ivPct / 100);
+    const scenDTE = Math.max(0, dte - _scenarioState.daysForward);
+    const scenPnL = window.valueStrategyAtPrice(synth, scenSpot, scenDTE, scenIV);
+    totalNow += nowPnL;
+    totalScenario += scenPnL;
+    rows.push({ symbol: s.symbol, name: s.strategy_name, nowPnL, scenPnL, delta: scenPnL - nowPnL });
+  });
+  const totalDelta = totalScenario - totalNow;
+  const deltaColor = totalDelta >= 0 ? 'var(--green)' : 'var(--red)';
+  let html = '<div class="saved-title">\uD83C\uDFAF Scenario Analysis</div>';
+  html += '<div class="scenario-controls">';
+  html += `<div class="sc-slider"><label>Spot &Delta;: <strong>${_scenarioState.spotPct >= 0 ? '+' : ''}${_scenarioState.spotPct}%</strong></label><input type="range" min="-20" max="20" step="1" value="${_scenarioState.spotPct}" oninput="updateScenario('spotPct', this.value)"></div>`;
+  html += `<div class="sc-slider"><label>IV &Delta;: <strong>${_scenarioState.ivPct >= 0 ? '+' : ''}${_scenarioState.ivPct}%</strong></label><input type="range" min="-50" max="100" step="5" value="${_scenarioState.ivPct}" oninput="updateScenario('ivPct', this.value)"></div>`;
+  html += `<div class="sc-slider"><label>Days fwd: <strong>${_scenarioState.daysForward}</strong></label><input type="range" min="0" max="21" step="1" value="${_scenarioState.daysForward}" oninput="updateScenario('daysForward', this.value)"></div>`;
+  html += '</div>';
+  html += `<div class="scenario-result"><span class="sr-label">Aggregate book P&L change:</span> <span class="sr-value" style="color:${deltaColor}">${totalDelta >= 0 ? '+' : ''}$${totalDelta.toFixed(0)}</span></div>`;
+  if (rows.length) {
+    html += '<div class="scenario-rows">';
+    rows.forEach(r => {
+      const c = r.delta >= 0 ? 'var(--green)' : 'var(--red)';
+      html += `<div class="scenario-row"><span>${r.symbol} ${r.name}</span><span style="color:${c}">${r.delta >= 0 ? '+' : ''}$${r.delta.toFixed(0)}</span></div>`;
+    });
+    html += '</div>';
+  }
+  container.innerHTML = html;
+}
+
+// ===== Phase 4.4 — Multi-leg roll optimizer =====
+async function loadRollCandidates(strategy) {
+  const container = document.getElementById('roll-suggestions-content');
+  if (!container || !strategy || !lastResult) return;
+  if (!window.computeRollCandidates) {
+    container.innerHTML = '<div style="font-size:11px;color:var(--dim)">Roll optimizer unavailable.</div>';
+    return;
+  }
+  try {
+    container.innerHTML = '<div style="font-size:11px;color:var(--dim)">Loading next expirations...</div>';
+    const symbol = lastResult.symbol;
+    // Fetch list of expirations
+    const baseResp = await fetch(`/api/options/${symbol}`).then(r => r.json()).catch(() => null);
+    const expirations = baseResp?.optionChain?.result?.[0]?.expirationDates || [];
+    const nowSec = Math.floor(Date.now() / 1000);
+    // Find expirations 20-60 days out (skip weeklies for stability)
+    const futureExps = expirations.filter(e => {
+      const dte = (e - nowSec) / 86400;
+      return dte > (strategy.dte || 0) + 5 && dte < (strategy.dte || 0) + 90;
+    }).slice(0, 3);
+    if (!futureExps.length) {
+      container.innerHTML = '<div style="font-size:11px;color:var(--dim)">No future expirations available for rolling.</div>';
+      return;
+    }
+    const futureChains = [];
+    for (const exp of futureExps) {
+      const r = await fetch(`/api/options/${symbol}?date=${exp}`).then(r => r.json()).catch(() => null);
+      const chain = r?.optionChain?.result?.[0]?.options?.[0];
+      if (chain) {
+        futureChains.push({
+          expiration: exp,
+          expirationDate: new Date(exp * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          dte: Math.round((exp - nowSec) / 86400),
+          calls: chain.calls || [],
+          puts: chain.puts || [],
+        });
+      }
+    }
+    const candidates = window.computeRollCandidates(strategy, futureChains, lastResult.price);
+    if (!candidates.length) {
+      container.innerHTML = '<div style="font-size:11px;color:var(--dim)">No viable rolls found.</div>';
+      return;
+    }
+    let html = '<div style="font-size:10px;color:var(--dim);margin-bottom:6px">Top 3 candidate rolls (preserving strategy structure):</div>';
+    candidates.forEach((c, i) => {
+      const rollColor = c.rollNet >= 0 ? 'var(--green)' : 'var(--red)';
+      const rollLabel = c.rollNet >= 0 ? 'CREDIT' : 'DEBIT';
+      html += `<div class="roll-card" data-testid="roll-card-${i}">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-weight:700">Roll to ${c.expirationDate} (${c.dte} DTE)</span>
+          <span style="color:${rollColor};font-weight:700;font-size:11px">${rollLabel} $${Math.abs(c.rollNet).toFixed(0)}</span>
+        </div>
+        <div style="font-size:10px;color:var(--dim);margin-top:4px">New strikes: ${c.newLegs.filter(l => l.type !== 'Stock').map(l => l.strike).join(' / ')}</div>
+      </div>`;
+    });
+    container.innerHTML = html;
+  } catch (e) {
+    container.innerHTML = '<div style="font-size:11px;color:var(--red)">Roll optimizer error: ' + e.message + '</div>';
+  }
+}
+
+// ===== Phase 5.1 — Alerts =====
+async function loadAlerts() {
+  if (!currentUser?.sub || currentUser.isGuest) return [];
+  try {
+    const r = await fetch(`/api/alerts?userId=${encodeURIComponent(currentUser.sub)}`);
+    const data = await r.json();
+    return data.alerts || [];
+  } catch (e) { return []; }
+}
+
+async function createAlertForStrategy(strategy) {
+  if (!currentUser?.sub || currentUser.isGuest) { openSignIn(); return; }
+  if (!userSubscription.active) { showUpgradeModal(); return; }
+  const types = ['profit_target', 'stop_loss', 'iv_rank_above', 'iv_rank_below', 'price_above', 'price_below'];
+  const choice = prompt('Alert type — pick one:\n1. profit_target\n2. stop_loss\n3. iv_rank_above\n4. iv_rank_below\n5. price_above\n6. price_below\n\nEnter 1-6:');
+  const idx = parseInt(choice) - 1;
+  if (idx < 0 || idx >= types.length || isNaN(idx)) return;
+  const triggerType = types[idx];
+  const threshold = parseFloat(prompt(`Threshold for ${triggerType}:`));
+  if (isNaN(threshold)) return;
+  try {
+    const r = await fetch('/api/alerts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: currentUser.sub,
+        symbol: lastResult.symbol,
+        strategy_name: strategy.name,
+        trigger_type: triggerType,
+        threshold,
+        legs: strategy.legs,
+      }),
+    });
+    const data = await r.json();
+    if (data.created) {
+      alert('Alert created! Backtester will check it daily.');
+      renderAlertsSection();
+    }
+  } catch (e) { alert('Failed to create alert: ' + e.message); }
+}
+
+async function deleteAlert(id) {
+  if (!currentUser?.sub) return;
+  if (!confirm('Delete this alert?')) return;
+  try {
+    await fetch(`/api/alerts?id=${id}&userId=${encodeURIComponent(currentUser.sub)}`, { method: 'DELETE' });
+    renderAlertsSection();
+  } catch (e) { }
+}
+
+async function renderAlertsSection() {
+  const container = document.getElementById('alerts-section');
+  if (!container) return;
+  if (!currentUser?.sub || currentUser.isGuest) {
+    container.innerHTML = '';
+    return;
+  }
+  const alerts = await loadAlerts();
+  if (!alerts.length) {
+    container.innerHTML = '<div class="saved-title">\uD83D\uDD14 Alerts</div><div style="font-size:11px;color:var(--dim);padding:8px 0">No alerts set. Click "Alert Me" on any strategy to create one.</div>';
+    return;
+  }
+  let html = '<div class="saved-title">\uD83D\uDD14 Alerts (' + alerts.length + ')</div>';
+  alerts.forEach(a => {
+    const stateColor = a.status === 'triggered' ? 'var(--green)' : a.status === 'pending' ? 'var(--accent)' : 'var(--dim)';
+    html += `<div class="alert-card" data-testid="alert-card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-weight:700;font-size:12px">${a.symbol} \u2014 ${a.strategy_name || 'ad-hoc'}</div>
+          <div style="font-size:10px;color:var(--dim)">${a.trigger_type} @ ${a.threshold}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:9px;color:${stateColor};text-transform:uppercase;font-weight:700">${a.status}</div>
+          <button onclick="deleteAlert(${a.id})" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:10px;margin-top:4px">delete</button>
+        </div>
+      </div>
+    </div>`;
+  });
+  container.innerHTML = html;
 }
 
 // ===== PAYOFF DIAGRAM =====

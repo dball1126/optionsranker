@@ -219,6 +219,163 @@ function computeKellySize(maxProfit, maxLoss, prob, accountSize) {
   };
 }
 
+// ---------- Margin / Buying Power ----------
+// Reg-T margin requirement per contract for common strategies.
+// Returns dollars required to hold ONE contract (multiply by qty for total).
+function computeMarginRequirement(strategy, spotPrice) {
+  if (!strategy || !strategy.legs || !strategy.legs.length) return null;
+  const name = strategy.name || '';
+  const legs = strategy.legs;
+
+  // Net premium (positive = credit received, negative = debit paid)
+  const netPremium = legs.reduce((sum, l) => {
+    if (l.type === 'Stock') return sum;
+    const sign = (l.action === 'Sell') ? 1 : -1;
+    return sum + sign * (l.price || 0) * (l.qty || 1) * 100;
+  }, 0);
+
+  // Long-only debit strategies — margin = full debit
+  if (name === 'Long Call' || name === 'Long Put' || name === 'Straddle' || name === 'Strangle') {
+    const debit = legs.reduce((s, l) => s + (l.price || 0) * (l.qty || 1) * 100, 0);
+    return { type: 'debit', dollars: debit, formula: 'Full debit paid' };
+  }
+
+  // Debit spreads — margin = net debit only (defined risk)
+  if (name === 'Bull Call Spread' || name === 'Bear Put Spread' || name === 'Butterfly') {
+    const debit = Math.max(0, -netPremium);
+    return { type: 'debit_spread', dollars: debit, formula: 'Net debit (defined risk)' };
+  }
+
+  // Credit spreads — margin = spread width × 100 − credit
+  if (name === 'Bull Put Spread' || name === 'Bear Call Spread') {
+    const strikes = legs.filter(l => l.type !== 'Stock').map(l => l.strike);
+    const width = Math.max(...strikes) - Math.min(...strikes);
+    const credit = Math.max(0, netPremium);
+    const margin = (width * 100) - credit;
+    return { type: 'credit_spread', dollars: margin, formula: `Width $${width} × 100 − $${credit.toFixed(0)} credit` };
+  }
+
+  // Iron Condor — margin = max wing width × 100 − credit
+  if (name === 'Iron Condor') {
+    const calls = legs.filter(l => l.type === 'Call').map(l => l.strike).sort((a, b) => a - b);
+    const puts = legs.filter(l => l.type === 'Put').map(l => l.strike).sort((a, b) => a - b);
+    const callWidth = calls.length >= 2 ? calls[calls.length - 1] - calls[0] : 0;
+    const putWidth = puts.length >= 2 ? puts[puts.length - 1] - puts[0] : 0;
+    const maxWidth = Math.max(callWidth, putWidth);
+    const credit = Math.max(0, netPremium);
+    const margin = (maxWidth * 100) - credit;
+    return { type: 'iron_condor', dollars: margin, formula: `Max wing $${maxWidth} × 100 − $${credit.toFixed(0)} credit` };
+  }
+
+  // Cash-Secured Put — margin = strike × 100 − credit
+  if (name === 'Cash-Secured Put') {
+    const strike = legs[0].strike;
+    const credit = Math.max(0, netPremium);
+    const margin = (strike * 100) - credit;
+    return { type: 'csp', dollars: margin, formula: `Strike $${strike} × 100 − $${credit.toFixed(0)} credit` };
+  }
+
+  // Covered Call — margin = stock cost basis (or current spot if not provided)
+  if (name === 'Covered Call' || name === 'Collar') {
+    const stockLeg = legs.find(l => l.type === 'Stock');
+    const cost = stockLeg ? (stockLeg.price || spotPrice || 100) * 100 : (spotPrice || 100) * 100;
+    return { type: 'covered_call', dollars: cost, formula: `Stock cost basis $${(cost/100).toFixed(0)} × 100` };
+  }
+
+  // Calendar/Diagonal — net debit (defined risk to the long leg)
+  if (name === 'Calendar Spread' || name === 'Diagonal Spread') {
+    const debit = Math.max(0, -netPremium);
+    return { type: 'calendar', dollars: debit, formula: 'Net debit paid' };
+  }
+
+  // Ratio spreads — naked short side margin = ~20% underlying per uncovered short
+  if (name.includes('Ratio Spread')) {
+    const margin = 0.20 * (spotPrice || 100) * 100;  // approximation
+    return { type: 'ratio', dollars: margin, formula: 'Approx 20% underlying (naked short leg)' };
+  }
+
+  // Default fallback — use max loss as margin proxy
+  if (isFinite(strategy.maxLoss)) {
+    return { type: 'default', dollars: strategy.maxLoss, formula: 'Max loss (defined risk)' };
+  }
+  return { type: 'unknown', dollars: 0, formula: 'Unknown' };
+}
+
+// ---------- Roll Optimizer ----------
+// Given a strategy and a list of (expiration, calls, puts) for FUTURE expirations,
+// build candidate rolls preserving the strategy structure but with new strikes.
+// Returns ranked candidates by expected profit improvement.
+function computeRollCandidates(strategy, futureChains, currentSpot) {
+  if (!strategy || !strategy.legs || !futureChains || !futureChains.length) return [];
+  const candidates = [];
+  const stockLegs = strategy.legs.filter(l => l.type === 'Stock');
+  const optLegs = strategy.legs.filter(l => l.type !== 'Stock');
+  if (!optLegs.length) return [];
+
+  for (const chain of futureChains) {
+    if (!chain.calls || !chain.puts) continue;
+    // Match each leg to the closest strike in the new chain
+    const newLegs = optLegs.map(leg => {
+      const pool = leg.type === 'Call' ? chain.calls : chain.puts;
+      // Try to preserve the same delta-distance from spot
+      const oldDist = leg.strike - currentSpot;
+      const target = currentSpot + oldDist;
+      let best = pool[0];
+      let bestDiff = Infinity;
+      for (const c of pool) {
+        const d = Math.abs(c.strike - target);
+        if (d < bestDiff) { bestDiff = d; best = c; }
+      }
+      const newPrice = ((best.bid || 0) + (best.ask || best.lastPrice || 0)) / 2 || best.lastPrice || 0;
+      return { ...leg, strike: best.strike, price: newPrice };
+    });
+    const newAllLegs = [...stockLegs, ...newLegs];
+
+    // Compute net cost of the new structure
+    const newNet = newAllLegs.reduce((sum, l) => {
+      if (l.type === 'Stock') return sum;
+      const sign = (l.action === 'Sell') ? 1 : -1;
+      return sum + sign * (l.price || 0) * (l.qty || 1) * 100;
+    }, 0);
+    const oldNet = strategy.legs.reduce((sum, l) => {
+      if (l.type === 'Stock') return sum;
+      const sign = (l.action === 'Sell') ? 1 : -1;
+      return sum + sign * (l.price || 0) * (l.qty || 1) * 100;
+    }, 0);
+    // Net debit/credit for the roll = (close current at current mid) + (open new at mid)
+    // We approximate the close cost as -oldNet (reverse the entry)
+    const rollNet = newNet - oldNet;
+    const dte = chain.dte || 30;
+
+    candidates.push({
+      expiration: chain.expiration,
+      expirationDate: chain.expirationDate || `+${dte}d`,
+      dte,
+      newLegs: newAllLegs,
+      rollNet,           // positive = credit on the roll, negative = debit
+      newPrice: newNet,  // the net premium of the new position
+    });
+  }
+
+  // Rank by best roll: prefer credit rolls, then by least debit
+  candidates.sort((a, b) => b.rollNet - a.rollNet);
+  return candidates.slice(0, 3);
+}
+
+// ---------- Scenario scaling helper ----------
+// Given a strategy and a scenario {spotPct, ivPct, daysForward}, return the projected P&L.
+// Uses valueStrategyAtPrice from timing-optimizer.js (must be loaded).
+function computeScenarioPnL(strategy, currentSpot, currentDTE, scenarioParams, valueFn) {
+  if (!strategy || !valueFn) return null;
+  const spotPct = scenarioParams.spotPct || 0;
+  const ivPct = scenarioParams.ivPct || 0;
+  const daysForward = scenarioParams.daysForward || 0;
+  const newSpot = currentSpot * (1 + spotPct / 100);
+  const newIV = (strategy.iv || 0.3) * (1 + ivPct / 100);
+  const newDTE = Math.max(0, currentDTE - daysForward);
+  return valueFn(strategy, newSpot, newDTE, newIV);
+}
+
 // ---------- Earnings IV Crush Edge ----------
 // Compares the current ATM straddle implied move to historical 1-day moves around prior earnings dates.
 // Returns the edge as a percentage (positive = current premium is rich vs history).
@@ -254,6 +411,9 @@ if (typeof module !== 'undefined' && module.exports) {
     skewAdjustedProb,
     computeKellySize,
     computeEarningsCrushEdge,
+    computeMarginRequirement,
+    computeRollCandidates,
+    computeScenarioPnL,
   };
 }
 if (typeof window !== 'undefined') {
@@ -265,4 +425,7 @@ if (typeof window !== 'undefined') {
   window.skewAdjustedProb = skewAdjustedProb;
   window.computeKellySize = computeKellySize;
   window.computeEarningsCrushEdge = computeEarningsCrushEdge;
+  window.computeMarginRequirement = computeMarginRequirement;
+  window.computeRollCandidates = computeRollCandidates;
+  window.computeScenarioPnL = computeScenarioPnL;
 }
