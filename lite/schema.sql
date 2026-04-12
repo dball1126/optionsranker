@@ -64,6 +64,7 @@ CREATE TABLE IF NOT EXISTS paper_trades (
   target_exit_date TEXT,
   profit_target REAL,
   stop_loss REAL,
+  agent_id TEXT,
   created_at TEXT DEFAULT (datetime('now'))
 );
 
@@ -88,6 +89,7 @@ CREATE INDEX IF NOT EXISTS idx_iv_symbol ON iv_history(symbol);
 CREATE INDEX IF NOT EXISTS idx_saved_user ON saved_strategies(user_id);
 CREATE INDEX IF NOT EXISTS idx_pt_status ON paper_trades(status);
 CREATE INDEX IF NOT EXISTS idx_pt_expiry ON paper_trades(expiry_date);
+CREATE INDEX IF NOT EXISTS idx_pt_agent ON paper_trades(agent_id);
 
 -- Daily market pulse signal snapshots (one row per day, upserted)
 CREATE TABLE IF NOT EXISTS signal_snapshots (
