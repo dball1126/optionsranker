@@ -397,6 +397,86 @@ body {
 .star-toggle:hover { border-color: var(--accent); color: var(--accent); }
 .star-toggle.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
 
+/* ===== POPULAR TICKERS ===== */
+.popular-tickers {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin: 0 auto 16px;
+  max-width: 560px;
+}
+.popular-label {
+  font-size: 11px;
+  color: var(--dimmer);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+.popular-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.popular-chip {
+  background: var(--bg3);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.popular-chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,212,170,0.15);
+}
+.popular-chip .pc-icon { font-size: 14px; opacity: 0.6; }
+
+/* ===== SOCIAL PROOF ===== */
+.social-proof {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  margin: 0 auto 32px;
+  max-width: 560px;
+  flex-wrap: wrap;
+}
+.sp-stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--dim);
+}
+.sp-stat .sp-num {
+  font-weight: 800;
+  color: var(--accent);
+  font-size: 14px;
+}
+.sp-stat .sp-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: sp-pulse 2s ease-in-out infinite;
+}
+@keyframes sp-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
 /* ===== MARKET PULSE ===== */
 .market-pulse {
   background: var(--bg2);
@@ -1329,9 +1409,48 @@ body {
   display: inline-flex; align-items: center; gap: 4px;
   background: var(--bg3); border: 1px solid var(--border); border-radius: 12px;
   padding: 3px 10px; font-size: 10px; cursor: help;
+  position: relative;
 }
 .analytics-badge .ab-label { color: var(--dim); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; }
 .analytics-badge .ab-value { font-weight: 700; }
+.analytics-badge .ab-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg4);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 11px;
+  color: var(--text);
+  line-height: 1.5;
+  width: 260px;
+  z-index: 100;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  pointer-events: none;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+.analytics-badge .ab-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: var(--border);
+}
+.analytics-badge:hover .ab-tooltip,
+.analytics-badge:focus .ab-tooltip,
+.analytics-badge.tooltip-active .ab-tooltip { display: block; }
+.analytics-badge .ab-tooltip .tt-title { font-weight: 700; color: var(--accent); margin-bottom: 4px; font-size: 11px; }
+@media (max-width: 860px) {
+  .analytics-badge .ab-tooltip { left: 0; transform: none; width: 220px; }
+  .analytics-badge .ab-tooltip::after { left: 20px; transform: none; }
+}
 .dq-note {
   margin-top: 6px; padding: 4px 8px;
   background: rgba(255, 152, 0, 0.1); color: var(--orange);
@@ -1499,6 +1618,19 @@ body {
     <span class="search-icon">&#128269;</span>
     <input type="text" class="search-box" id="search-landing" placeholder="Search any ticker... (e.g. AAPL)" autocomplete="off">
   </div>
+  <div class="popular-tickers" id="popular-tickers" data-testid="popular-tickers">
+    <span class="popular-label">Popular</span>
+    <div class="popular-chips">
+      <button class="popular-chip" onclick="searchTicker('AAPL')"><span class="pc-icon">&#9679;</span> AAPL</button>
+      <button class="popular-chip" onclick="searchTicker('TSLA')"><span class="pc-icon">&#9679;</span> TSLA</button>
+      <button class="popular-chip" onclick="searchTicker('NVDA')"><span class="pc-icon">&#9679;</span> NVDA</button>
+      <button class="popular-chip" onclick="searchTicker('SPY')"><span class="pc-icon">&#9679;</span> SPY</button>
+      <button class="popular-chip" onclick="searchTicker('QQQ')"><span class="pc-icon">&#9679;</span> QQQ</button>
+      <button class="popular-chip" onclick="searchTicker('META')"><span class="pc-icon">&#9679;</span> META</button>
+      <button class="popular-chip" onclick="searchTicker('AMZN')"><span class="pc-icon">&#9679;</span> AMZN</button>
+      <button class="popular-chip" onclick="searchTicker('MSFT')"><span class="pc-icon">&#9679;</span> MSFT</button>
+    </div>
+  </div>
   <div id="recent-tickers" class="recent-tickers" style="display:none;">
     <span class="recent-label">Recent:</span>
     <div class="recent-chips" id="recent-chips"></div>
@@ -1533,6 +1665,11 @@ body {
     </div>
   </div>
 
+  <div class="social-proof" id="social-proof" data-testid="social-proof">
+    <div class="sp-stat"><span class="sp-dot"></span> <span class="sp-num" id="sp-strategies">17</span> strategy types scored per ticker</div>
+    <div class="sp-stat"><span class="sp-num" id="sp-tickers">10</span> tickers tracked daily</div>
+    <div class="sp-stat"><span class="sp-num" id="sp-signals">4</span> market signals live</div>
+  </div>
   <div class="cta-row">
     <button class="cta-btn secondary" onclick="document.getElementById('search-landing').focus()">Try Free — 2 Strategies</button>
     <button class="cta-btn primary" onclick="showUpgradeModal()">Unlock All — $10/mo</button>
@@ -2632,24 +2769,24 @@ function renderResults(result) {
     const skewPct = (skew.skew * 100).toFixed(1);
     const skewColor = skew.skew > 0.05 ? 'var(--red)' : skew.skew < -0.03 ? 'var(--orange)' : 'var(--dim)';
     const skewLabel = skew.skew > 0.05 ? 'Put-rich (fear)' : skew.skew < -0.03 ? 'Call-rich (greed)' : 'Neutral';
-    badges.push(`<span class="analytics-badge" data-testid="badge-skew" title="25-delta put IV − 25-delta call IV, normalized by ATM IV. Positive = puts more expensive (downside fear)."><span class="ab-label">Skew</span><span class="ab-value" style="color:${skewColor}">${skew.skew > 0 ? '+' : ''}${skewPct}% ${skewLabel}</span></span>`);
+    badges.push(`<span class="analytics-badge" data-testid="badge-skew" tabindex="0" onclick="this.classList.toggle('tooltip-active')"><span class="ab-label">Skew</span><span class="ab-value" style="color:${skewColor}">${skew.skew > 0 ? '+' : ''}${skewPct}% ${skewLabel}</span><span class="ab-tooltip" data-testid="tooltip-skew"><span class="tt-title">IV Skew</span>25-delta put IV minus 25-delta call IV, normalized by ATM IV. Positive = puts more expensive (downside fear). Negative = calls bid up (speculative greed). Affects credit spread scoring.</span></span>`);
   }
   if (vrp != null) {
     const vrpColor = vrp > 1.3 ? 'var(--green)' : vrp < 0.9 ? 'var(--orange)' : 'var(--dim)';
     const vrpLabel = vrp > 1.3 ? 'Sellers favored' : vrp < 0.9 ? 'Buyers favored' : 'Neutral';
-    badges.push(`<span class="analytics-badge" data-testid="badge-vrp" title="Variance Risk Premium = VIX / 20-day SPY realized vol. >1.3 means options are pricing in more uncertainty than realized — premium sellers have edge."><span class="ab-label">VRP</span><span class="ab-value" style="color:${vrpColor}">${vrp.toFixed(2)} ${vrpLabel}</span></span>`);
+    badges.push(`<span class="analytics-badge" data-testid="badge-vrp" tabindex="0" onclick="this.classList.toggle('tooltip-active')"><span class="ab-label">VRP</span><span class="ab-value" style="color:${vrpColor}">${vrp.toFixed(2)} ${vrpLabel}</span><span class="ab-tooltip" data-testid="tooltip-vrp"><span class="tt-title">Variance Risk Premium</span>VIX divided by 20-day SPY realized volatility. Above 1.3 = options are pricing in more risk than is actually realized — premium sellers have an edge. Below 0.9 = options are cheap relative to actual moves — favor buying premium.</span></span>`);
   }
   if (gex && gex.available && ['SPY', 'QQQ', 'IWM', 'DIA'].includes(symbol.toUpperCase())) {
     const gexColor = gex.regime === 'mean_reverting' ? 'var(--green)' : 'var(--orange)';
     const gexLabel = gex.regime === 'mean_reverting' ? 'Mean reverting' : 'Trending';
     const sign = gex.spotVsFlipPct >= 0 ? '+' : '';
-    badges.push(`<span class="analytics-badge" data-testid="badge-gex" title="Total dealer Gamma Exposure. Above the gamma flip strike = dealers long gamma → market mean-reverts. Below = dealers short gamma → market trends."><span class="ab-label">GEX</span><span class="ab-value" style="color:${gexColor}">${sign}${gex.spotVsFlipPct.toFixed(1)}% ${gexLabel}</span></span>`);
+    badges.push(`<span class="analytics-badge" data-testid="badge-gex" tabindex="0" onclick="this.classList.toggle('tooltip-active')"><span class="ab-label">GEX</span><span class="ab-value" style="color:${gexColor}">${sign}${gex.spotVsFlipPct.toFixed(1)}% ${gexLabel}</span><span class="ab-tooltip" data-testid="tooltip-gex"><span class="tt-title">Gamma Exposure (GEX)</span>Estimated net dealer gamma from open interest. When spot is above the gamma flip strike, dealers are long gamma and hedge by selling rallies/buying dips — market mean-reverts. Below the flip = dealers short gamma — market trends and volatility increases.</span></span>`);
   }
   if (earningsCrush && earningsCrush.recommendation !== 'insufficient_data' && earningsCrush.recommendation !== 'neutral') {
     const ecColor = earningsCrush.recommendation === 'sell_premium' ? 'var(--green)' : 'var(--orange)';
     const ecLabel = earningsCrush.recommendation === 'sell_premium' ? 'Premium overpriced' : 'Premium underpriced';
     const sign = earningsCrush.edgePct >= 0 ? '+' : '';
-    badges.push(`<span class="analytics-badge" data-testid="badge-earnings-crush" title="Implied move (ATM straddle × 0.85) vs median historical post-earnings move. Positive edge = options overpricing the move = favor short premium."><span class="ab-label">Earnings</span><span class="ab-value" style="color:${ecColor}">${sign}${earningsCrush.edgePct.toFixed(0)}% ${ecLabel}</span></span>`);
+    badges.push(`<span class="analytics-badge" data-testid="badge-earnings-crush" tabindex="0" onclick="this.classList.toggle('tooltip-active')"><span class="ab-label">Earnings</span><span class="ab-value" style="color:${ecColor}">${sign}${earningsCrush.edgePct.toFixed(0)}% ${ecLabel}</span><span class="ab-tooltip" data-testid="tooltip-earnings"><span class="tt-title">Earnings Crush Edge</span>Compares the current implied move (ATM straddle price) to the median historical post-earnings move. Positive edge = options are overpricing the move — favor selling premium (iron condors, strangles). Negative = options underpricing — favor buying premium (straddles).</span></span>`);
   }
   if (badges.length) {
     analyticsHtml = `<div class="analytics-row" data-testid="analytics-row">${badges.join('')}</div>`;

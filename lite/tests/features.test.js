@@ -357,6 +357,78 @@ t('Phase 4+5: render hooks called from results page', () => {
 });
 
 // ─────────────────────────────────────────────────────────────
+// Analytics Badge Tooltips (update-feature — 2026-04-12)
+// ─────────────────────────────────────────────────────────────
+t('BadgeTooltips: each badge has ab-tooltip child with testid', () => {
+  ['tooltip-skew', 'tooltip-vrp', 'tooltip-gex', 'tooltip-earnings'].forEach(id => {
+    assert.ok(HTML.includes(`data-testid="${id}"`), `${id} testid missing`);
+  });
+});
+
+t('BadgeTooltips: tooltips contain tt-title and descriptive text', () => {
+  assert.ok(HTML.includes('class="tt-title">IV Skew'), 'Skew tooltip title missing');
+  assert.ok(HTML.includes('class="tt-title">Variance Risk Premium'), 'VRP tooltip title missing');
+  assert.ok(HTML.includes('class="tt-title">Gamma Exposure'), 'GEX tooltip title missing');
+  assert.ok(HTML.includes('class="tt-title">Earnings Crush Edge'), 'Earnings tooltip title missing');
+});
+
+t('BadgeTooltips: CSS styles for tooltip display and positioning', () => {
+  ['.ab-tooltip', '.ab-tooltip::after', '.tt-title', 'tooltip-active'].forEach(sel => {
+    assert.ok(HTML.includes(sel), `CSS selector ${sel} missing`);
+  });
+  assert.ok(HTML.includes(':hover .ab-tooltip'), 'hover trigger missing');
+  assert.ok(HTML.includes(':focus .ab-tooltip'), 'focus trigger missing');
+});
+
+t('BadgeTooltips: badges have tabindex and onclick for mobile', () => {
+  const tabindexes = HTML.match(/analytics-badge.*?tabindex="0"/g);
+  assert.ok(tabindexes && tabindexes.length >= 4, `expected >=4 tabindex badges, got ${tabindexes ? tabindexes.length : 0}`);
+  assert.ok(HTML.includes("tooltip-active"), 'tooltip-active toggle missing');
+});
+
+// ─────────────────────────────────────────────────────────────
+// Popular Tickers + Social Proof (add-feature — 2026-04-12)
+// ─────────────────────────────────────────────────────────────
+t('PopularTickers: container with testid on landing page', () => {
+  assert.ok(HTML.includes('data-testid="popular-tickers"'), 'popular-tickers testid missing');
+  assert.ok(HTML.includes('id="popular-tickers"'), 'popular-tickers id missing');
+  assert.ok(HTML.includes('class="popular-tickers"'), 'popular-tickers class missing');
+});
+
+t('PopularTickers: 8 popular chip buttons with searchTicker calls', () => {
+  const chips = HTML.match(/class="popular-chip"/g);
+  assert.ok(chips && chips.length === 8, `expected 8 popular chips, got ${chips ? chips.length : 0}`);
+  ['AAPL', 'TSLA', 'NVDA', 'SPY', 'QQQ', 'META', 'AMZN', 'MSFT'].forEach(sym => {
+    assert.ok(HTML.includes(`searchTicker('${sym}')`), `searchTicker('${sym}') onclick missing`);
+  });
+});
+
+t('PopularTickers: CSS classes defined', () => {
+  ['.popular-tickers', '.popular-label', '.popular-chips', '.popular-chip', '.pc-icon'].forEach(sel => {
+    assert.ok(HTML.includes(sel), `CSS selector ${sel} missing`);
+  });
+});
+
+t('SocialProof: container with testid on landing page', () => {
+  assert.ok(HTML.includes('data-testid="social-proof"'), 'social-proof testid missing');
+  assert.ok(HTML.includes('id="social-proof"'), 'social-proof id missing');
+});
+
+t('SocialProof: stats display strategy count, ticker count, signals', () => {
+  assert.ok(HTML.includes('id="sp-strategies"'), 'sp-strategies counter missing');
+  assert.ok(HTML.includes('id="sp-tickers"'), 'sp-tickers counter missing');
+  assert.ok(HTML.includes('id="sp-signals"'), 'sp-signals counter missing');
+  assert.ok(HTML.includes('strategy types scored per ticker'), 'strategy label missing');
+});
+
+t('SocialProof: CSS classes and pulse animation', () => {
+  ['.social-proof', '.sp-stat', '.sp-num', '.sp-dot'].forEach(sel => {
+    assert.ok(HTML.includes(sel), `CSS selector ${sel} missing`);
+  });
+  assert.ok(HTML.includes('sp-pulse'), 'sp-pulse animation missing');
+});
+
+// ─────────────────────────────────────────────────────────────
 // Runner
 // ─────────────────────────────────────────────────────────────
 (async () => {
