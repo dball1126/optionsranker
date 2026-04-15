@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Today's Top Options Play — April 15, 2026 | OptionsRanker</title>
+  <meta name="description" content="OptionsRanker's highest-confidence options trade for today, April 15, 2026. Algorithm-ranked by expected value, IV rank, and risk/reward. Free preview.">
+  <link rel="canonical" href="https://optionsranker.io/top-play.html">
+  <meta property="og:title" content="Today's Top Options Play — OptionsRanker">
+  <meta property="og:description" content="Algorithm's #1 ranked options setup for today. Expected value and risk/reward analyzed. Free preview.">
+  <meta property="og:type" content="article">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+    :root{
+      --bg:#080b14;--bg-card:#0f1320;--bg-card2:#141929;
+      --primary:#6366f1;--primary-light:#818cf8;--accent:#06b6d4;--green:#22c55e;
+      --text:#e2e8f0;--text-dim:#94a3b8;--text-muted:#64748b;
+      --border:#1e2430;--radius:12px;
+      --font:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+      --mono:'JetBrains Mono',monospace;
+    }
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+    a{color:var(--primary-light);text-decoration:none}a:hover{color:var(--accent)}
+
+    /* NAV */
+    .nav{background:rgba(8,11,20,.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:0 1.5rem;position:sticky;top:0;z-index:100}
+    .nav-inner{max-width:1000px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:58px}
+    .nav-logo{font-size:1.1rem;font-weight:900;color:var(--text);display:flex;align-items:center;gap:.4rem}
+    .nav-logo span{color:var(--primary-light)}
+    .nav-links{display:flex;gap:.5rem}
+    .nav-links a{padding:.4rem .85rem;border-radius:8px;font-size:.8rem;font-weight:500;color:var(--text-dim);transition:all .2s}
+    .nav-links a:hover{color:var(--text);background:rgba(99,102,241,.1)}
+    .nav-cta{background:var(--primary);color:white;padding:.4rem .9rem;border-radius:8px;font-size:.8rem;font-weight:700;transition:background .2s}
+    .nav-cta:hover{background:var(--primary-light);color:white}
+
+    /* HERO */
+    .hero{max-width:700px;margin:0 auto;padding:2.5rem 1.5rem 1.5rem;text-align:center}
+    .hero-badge{display:inline-flex;align-items:center;gap:.4rem;background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.25);color:var(--primary-light);font-size:.72rem;font-weight:700;padding:.3rem .7rem;border-radius:20px;margin-bottom:.85rem;text-transform:uppercase;letter-spacing:.5px}
+    .hero-badge::before{content:'';display:inline-block;width:6px;height:6px;background:var(--primary);border-radius:50%;animation:pulse 1.5s infinite}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+    .hero h1{font-size:clamp(1.6rem,4vw,2.4rem);font-weight:900;line-height:1.2;margin-bottom:.6rem}
+    .hero h1 em{font-style:normal;background:linear-gradient(135deg,var(--primary),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .hero p{color:var(--text-dim);font-size:.95rem;max-width:480px;margin:0 auto 1.5rem}
+
+    /* PLAY CARD */
+    .play-wrapper{max-width:620px;margin:0 auto;padding:0 1.5rem 3rem}
+    .play-card{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;overflow:hidden;position:relative}
+    .play-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--primary),var(--accent))}
+
+    .play-header{padding:1.15rem 1.5rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+    .play-label{font-size:.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px}
+    .play-date{font-size:.82rem;color:var(--text-dim);margin-top:.1rem}
+    .ev-badge{text-align:right}
+    .ev-label{font-size:.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px}
+    .ev-value{font-size:1.3rem;font-weight:900;color:var(--green)}
+
+    .play-ticker{padding:1.25rem 1.5rem;border-bottom:1px solid var(--border)}
+    .ticker-row{display:flex;align-items:center;gap:1rem;margin-bottom:.5rem}
+    .ticker-symbol{font-size:1.6rem;font-weight:900;font-family:var(--mono)}
+    .ticker-name{font-size:.85rem;color:var(--text-dim)}
+    .ticker-price{font-family:var(--mono);font-size:1rem;font-weight:700;margin-left:auto}
+    .play-meta{display:flex;gap:1.5rem;flex-wrap:wrap}
+    .play-meta-item{font-size:.78rem;color:var(--text-muted)}
+    .play-meta-item strong{color:var(--text-dim);font-weight:600}
+
+    .play-trade{padding:1.25rem 1.5rem;border-bottom:1px solid var(--border)}
+    .trade-label{font-size:.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.4rem}
+    .trade-value{font-size:1.35rem;font-weight:900}
+    .trade-details{font-size:.82rem;color:var(--text-dim);margin-top:.15rem;font-family:var(--mono)}
+
+    /* BLURRED ANALYSIS */
+    .play-analysis{padding:1.25rem 1.5rem;position:relative}
+    .analysis-preview{filter:blur(6px);user-select:none;pointer-events:none;opacity:.65}
+    .analysis-text{font-size:.875rem;color:var(--text-dim);line-height:1.75;margin-bottom:.75rem}
+    .analysis-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem}
+    .metric-cell{background:var(--bg-card2);border:1px solid var(--border);border-radius:8px;padding:.6rem;text-align:center}
+    .metric-val{font-size:1rem;font-weight:800;font-family:var(--mono)}
+    .metric-lbl{font-size:.65rem;color:var(--text-muted);margin-top:.1rem}
+
+    .unlock-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.5rem;background:linear-gradient(to bottom,transparent 0%,rgba(8,11,20,.96) 30%)}
+    .unlock-title{font-size:.95rem;font-weight:800;margin-bottom:.2rem}
+    .unlock-sub{font-size:.8rem;color:var(--text-dim);margin-bottom:.9rem;text-align:center;max-width:300px}
+    .unlock-form{display:flex;gap:.5rem;width:100%;max-width:340px}
+    .unlock-input{flex:1;padding:.55rem .85rem;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:.83rem;font-family:var(--font);outline:none}
+    .unlock-input:focus{border-color:var(--primary)}
+    .unlock-btn{padding:.55rem 1rem;background:var(--primary);color:white;border:none;border-radius:8px;font-size:.83rem;font-weight:700;cursor:pointer;font-family:var(--font);white-space:nowrap;transition:background .2s}
+    .unlock-btn:hover{background:var(--primary-light)}
+    .unlock-note{font-size:.68rem;color:var(--text-muted);margin-top:.4rem}
+    .play-analysis.unlocked .analysis-preview{filter:none;opacity:1;pointer-events:auto}
+    .play-analysis.unlocked .unlock-overlay{display:none}
+
+    /* STATS */
+    .stats-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border-top:1px solid var(--border)}
+    .stat-cell{background:var(--bg-card);padding:.85rem;text-align:center}
+    .stat-val{font-size:1.1rem;font-weight:900;font-family:var(--mono)}
+    .stat-val.green{color:var(--green)}
+    .stat-lbl{font-size:.65rem;color:var(--text-muted);margin-top:.1rem}
+
+    /* PRO CTA */
+    .pro-cta{background:linear-gradient(135deg,rgba(99,102,241,.12),rgba(6,182,212,.06));border:1px solid rgba(99,102,241,.2);border-radius:12px;padding:1.5rem;text-align:center;margin-top:1.5rem}
+    .pro-cta h3{font-size:.95rem;font-weight:800;margin-bottom:.25rem}
+    .pro-cta p{font-size:.82rem;color:var(--text-dim);margin-bottom:.9rem}
+    .pro-btn{display:inline-block;background:var(--primary);color:white;padding:.55rem 1.4rem;border-radius:8px;font-weight:700;font-size:.85rem;transition:background .2s}
+    .pro-btn:hover{background:var(--primary-light);color:white}
+
+    /* AD */
+    .ad-slot{max-width:620px;margin:0 auto 1.5rem;padding:0 1.5rem;text-align:center;min-height:90px;display:flex;align-items:center;justify-content:center}
+
+    .footer{text-align:center;padding:2rem 1.5rem;border-top:1px solid var(--border);color:var(--text-muted);font-size:.75rem;margin-top:2rem}
+    .footer a{color:var(--text-dim)}
+    .disclaimer{max-width:600px;margin:.6rem auto 0;font-size:.68rem;line-height:1.5}
+
+    @media(max-width:600px){.stats-strip{grid-template-columns:repeat(2,1fr)}.unlock-form{flex-direction:column}.play-meta{gap:.75rem}}
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="nav-logo">Options<span>Ranker</span></div>
+    <div class="nav-links">
+      <a href="/">Rankings</a>
+    </div>
+    <a href="/index.html#pricing" class="nav-cta">Go Pro — $10/mo</a>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="hero-badge">Live · April 15, 2026</div>
+  <h1>Today's <em>Top Options Play</em></h1>
+  <p>Our algorithm ranked every liquid options chain today — this is the highest expected-value setup. Enter your email to see the full analysis, free.</p>
+</div>
+
+<div class="play-wrapper">
+  <div class="play-card">
+    <div class="play-header">
+      <div>
+        <div class="play-label">Algorithm Rank #1 — Apr 15, 2026</div>
+        <div class="play-date">Earnings Play · Post-Announcement</div>
+      </div>
+      <div class="ev-badge">
+        <div class="ev-label">Expected Value</div>
+        <div class="ev-value">+$340</div>
+      </div>
+    </div>
+
+    <div class="play-ticker">
+      <div class="ticker-row">
+        <div class="ticker-symbol">NVDA</div>
+        <div class="ticker-name">NVIDIA Corporation</div>
+        <div class="ticker-price">$875.40</div>
+      </div>
+      <div class="play-meta">
+        <div class="play-meta-item"><strong>IV Rank:</strong> 72nd percentile</div>
+        <div class="play-meta-item"><strong>Sector:</strong> Semiconductors</div>
+        <div class="play-meta-item"><strong>Earnings:</strong> Reported yesterday</div>
+      </div>
+    </div>
+
+    <div class="play-trade">
+      <div class="trade-label">Recommended Trade</div>
+      <div class="trade-value">Bear Call Spread</div>
+      <div class="trade-details">NVDA 900/910C · May 16 Exp · Credit $1.85 · Max Risk $8.15</div>
+    </div>
+
+    <!-- BLURRED ANALYSIS WITH EMAIL GATE -->
+    <div class="play-analysis" id="playAnalysis">
+      <div class="analysis-preview">
+        <div class="analysis-text">
+          NVDA reported earnings yesterday — a strong beat, but the stock already ran +18% into earnings and is showing exhaustion at the 900 level. IV is elevated at 72nd percentile (typically mean-reverts post-earnings). The bear call spread collects premium while the stock digests the move. Risk/reward is 1:4.4.
+        </div>
+        <div class="analysis-metrics">
+          <div class="metric-cell"><div class="metric-val">22.7%</div><div class="metric-lbl">Max Return</div></div>
+          <div class="metric-cell"><div class="metric-val">72nd</div><div class="metric-lbl">IV Rank</div></div>
+          <div class="metric-cell"><div class="metric-val">68%</div><div class="metric-lbl">Prob Profit</div></div>
+        </div>
+      </div>
+
+      <div class="unlock-overlay" id="unlockOverlay">
+        <div class="unlock-title">Unlock Full Analysis — Free</div>
+        <div class="unlock-sub">See all metrics: Greeks, breakeven, entry/exit levels, and the 5 risk factors our algorithm flagged.</div>
+        <form class="unlock-form" id="unlockForm" onsubmit="unlockPlay(event)">
+          <input type="email" class="unlock-input" id="unlockEmail" placeholder="your@email.com" required>
+          <button type="submit" class="unlock-btn">Unlock</button>
+        </form>
+        <div class="unlock-note">Free forever. Unsubscribe anytime.</div>
+      </div>
+    </div>
+
+    <div class="stats-strip">
+      <div class="stat-cell"><div class="stat-val green">68%</div><div class="stat-lbl">Prob Profit</div></div>
+      <div class="stat-cell"><div class="stat-val">$185</div><div class="stat-lbl">Max Credit</div></div>
+      <div class="stat-cell"><div class="stat-val">31d</div><div class="stat-lbl">DTE</div></div>
+      <div class="stat-cell"><div class="stat-val">-0.18</div><div class="stat-lbl">Delta</div></div>
+    </div>
+  </div>
+
+  <div class="pro-cta">
+    <h3>Get Every Day's Top 10 Plays</h3>
+    <p>Pro members see the full ranked list — all 10 setups, with Greeks, entry/exit levels, and real-time alerts when IV spikes.</p>
+    <a href="/index.html#pricing" class="pro-btn">Start Pro — $10/mo</a>
+  </div>
+</div>
+
+<!-- AD SLOT -->
+<div class="ad-slot">
+  <ins class="adsbygoogle" style="display:block;width:100%;max-width:580px" data-ad-client="ca-pub-3370053316573867" data-ad-slot="auto" data-ad-format="horizontal"></ins>
+</div>
+
+<footer class="footer">
+  <div>© 2026 OptionsRanker · <a href="/index.html">Home</a></div>
+  <div class="disclaimer">OptionsRanker is for informational and educational purposes only. Options trading involves significant risk of loss. This is not investment advice. Always consult a licensed financial advisor before trading.</div>
+</footer>
+
+<script>
+function unlockPlay(e) {
+  e.preventDefault();
+  const email = document.getElementById('unlockEmail').value.trim();
+  if (!email) return;
+  const btn = e.target.querySelector('.unlock-btn');
+  btn.textContent = 'Unlocking…';
+  btn.disabled = true;
+  fetch('/api/newsletter', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({email, source:'top-play-unlock'})
+  }).catch(() => {}).finally(() => {
+    document.getElementById('playAnalysis').classList.add('unlocked');
+    localStorage.setItem('or_unlocked', '1');
+  });
+}
+if (localStorage.getItem('or_unlocked')) {
+  document.getElementById('playAnalysis').classList.add('unlocked');
+}
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+</body>
+</html>
