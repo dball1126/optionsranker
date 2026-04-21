@@ -41,6 +41,9 @@ t('Watchlist: core JS functions defined', () => {
     'function toggleWatchlist',
     'function renderWatchlist',
     'function updateStarToggle',
+    'function getIvHeat',
+    'function sortWatchlistByPriority',
+    'function summarizeWatchlist',
   ];
   required.forEach(sig => assert.ok(HTML.includes(sig), `${sig} missing`));
 });
@@ -65,6 +68,17 @@ t('Watchlist: renderWatchlist invoked on load', () => {
   // must be called at script initialization (bottom of watchlist block)
   assert.ok(/renderWatchlist\(\);\s*$/m.test(HTML) || HTML.match(/renderWatchlist\(\);/g)?.length >= 2,
     'renderWatchlist() not invoked at bottom of watchlist block');
+});
+
+t('Watchlist: prioritized IV heat badges and summary copy rendered', () => {
+  assert.ok(HTML.includes('id="watchlist-summary"'), 'watchlist summary missing');
+  assert.ok(HTML.includes('Prioritized by IV Rank.'), 'summary copy missing');
+  ['wl-heat', 'wl-heat-hot', 'wl-heat-elevated', 'wl-heat-neutral', 'wl-heat-calm'].forEach(cls => {
+    assert.ok(HTML.includes('.' + cls), `${cls} CSS missing`);
+  });
+  ['🔥 Hot IV', '⚡ Elevated IV', '◐ Balanced IV', '🧊 Calm IV'].forEach(label => {
+    assert.ok(HTML.includes(label), `${label} label missing`);
+  });
 });
 
 // ─────────────────────────────────────────────────────────────

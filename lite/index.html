@@ -317,6 +317,12 @@ body {
   justify-content: space-between;
   margin-bottom: 12px;
 }
+.watchlist-summary {
+  font-size: 11px;
+  color: var(--dim);
+  margin-bottom: 10px;
+  line-height: 1.5;
+}
 .watchlist-title {
   font-size: 14px;
   font-weight: 700;
@@ -359,8 +365,34 @@ body {
   border-color: var(--accent);
   transform: translateX(2px);
 }
+.wl-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.wl-topline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 .wl-symbol { font-size: 14px; font-weight: 800; color: var(--text); letter-spacing: 0.5px; }
-.wl-meta { font-size: 11px; color: var(--dim); flex: 1; margin-left: 12px; }
+.wl-heat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+.wl-heat-hot { background: rgba(255, 107, 107, 0.12); color: #ff8d8d; border: 1px solid rgba(255, 107, 107, 0.24); }
+.wl-heat-elevated { background: rgba(255, 184, 77, 0.12); color: #ffd27d; border: 1px solid rgba(255, 184, 77, 0.24); }
+.wl-heat-neutral { background: rgba(91, 141, 239, 0.12); color: #9fc1ff; border: 1px solid rgba(91, 141, 239, 0.24); }
+.wl-heat-calm { background: rgba(132, 145, 166, 0.12); color: #b8c2d6; border: 1px solid rgba(132, 145, 166, 0.24); }
+.wl-meta { font-size: 11px; color: var(--dim); flex: 1; }
 .wl-remove {
   background: transparent;
   border: none;
@@ -1692,6 +1724,7 @@ body {
       <div class="watchlist-title"><span class="star-ico">&#9733;</span> Watchlist</div>
       <button class="watchlist-clear" id="watchlist-clear" title="Clear watchlist">Clear</button>
     </div>
+    <div class="watchlist-summary" id="watchlist-summary"></div>
     <div class="watchlist-items" id="watchlist-items"></div>
   </div>
   <div class="features">
@@ -4216,6 +4249,36 @@ renderRecentTickers();
 // ===== WATCHLIST =====
 const WATCHLIST_KEY = 'optionsranker_watchlist';
 const ACCOUNT_SIZE_KEY = 'optionsranker_account_size';
+function getWatchlistPriority(it) {
+  if (!it || typeof it.ivRank !== 'number' || !isFinite(it.ivRank)) return -1;
+  return it.ivRank;
+}
+function getIvHeat(ivRank) {
+  if (typeof ivRank !== 'number' || !isFinite(ivRank)) {
+    return { label: 'No IV signal', className: 'wl-heat-calm', priority: -1 };
+  }
+  if (ivRank >= 60) return { label: '🔥 Hot IV', className: 'wl-heat-hot', priority: 4 };
+  if (ivRank >= 35) return { label: '⚡ Elevated IV', className: 'wl-heat-elevated', priority: 3 };
+  if (ivRank >= 15) return { label: '◐ Balanced IV', className: 'wl-heat-neutral', priority: 2 };
+  return { label: '🧊 Calm IV', className: 'wl-heat-calm', priority: 1 };
+}
+function sortWatchlistByPriority(list) {
+  return [...list].sort((a, b) => {
+    const priorityDiff = getWatchlistPriority(b) - getWatchlistPriority(a);
+    if (priorityDiff !== 0) return priorityDiff;
+    return (b.addedAt || 0) - (a.addedAt || 0);
+  });
+}
+function summarizeWatchlist(items) {
+  const summary = { hot: 0, elevated: 0, calm: 0 };
+  items.forEach(it => {
+    const heat = getIvHeat(it.ivRank);
+    if (heat.priority >= 4) summary.hot += 1;
+    else if (heat.priority >= 3) summary.elevated += 1;
+    else summary.calm += 1;
+  });
+  return summary;
+}
 function getAccountSize() {
   try {
     const v = parseFloat(localStorage.getItem(ACCOUNT_SIZE_KEY));
@@ -4309,18 +4372,27 @@ function updateStarToggle(symbol) {
 function renderWatchlist() {
   const wrap = document.getElementById('watchlist');
   const listEl = document.getElementById('watchlist-items');
-  if (!wrap || !listEl) return;
-  const items = getWatchlist();
+  const summaryEl = document.getElementById('watchlist-summary');
+  if (!wrap || !listEl || !summaryEl) return;
+  const items = sortWatchlistByPriority(getWatchlist());
   if (items.length === 0) { wrap.style.display = 'none'; return; }
   wrap.style.display = 'block';
+  const summary = summarizeWatchlist(items);
+  summaryEl.textContent = 'Prioritized by IV Rank. ' + summary.hot + ' hot setup' + (summary.hot === 1 ? '' : 's') + ', ' + summary.elevated + ' elevated, ' + summary.calm + ' calm.';
   listEl.innerHTML = items.map(it => {
     const metaBits = [];
     if (typeof it.ivRank === 'number') metaBits.push('IV Rank ' + it.ivRank + '%');
     if (it.topStrategy) metaBits.push(it.topStrategy);
     const meta = metaBits.length ? metaBits.join(' \u00B7 ') : 'Click to analyze';
+    const heat = getIvHeat(it.ivRank);
     return `<div class="watchlist-item" data-ticker="${it.symbol}">
-      <span class="wl-symbol">${it.symbol}</span>
-      <span class="wl-meta">${meta}</span>
+      <div class="wl-main">
+        <div class="wl-topline">
+          <span class="wl-symbol">${it.symbol}</span>
+          <span class="wl-heat ${heat.className}">${heat.label}</span>
+        </div>
+        <span class="wl-meta">${meta}</span>
+      </div>
       <button class="wl-remove" data-remove="${it.symbol}" title="Remove">&#10005;</button>
     </div>`;
   }).join('');
