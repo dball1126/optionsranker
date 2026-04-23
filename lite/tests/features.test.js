@@ -42,6 +42,7 @@ t('Watchlist: core JS functions defined', () => {
     'function renderWatchlist',
     'function updateStarToggle',
     'function getIvHeat',
+    'function classifyStrategyTilt',
     'function sortWatchlistByPriority',
     'function summarizeWatchlist',
   ];
@@ -73,10 +74,17 @@ t('Watchlist: renderWatchlist invoked on load', () => {
 t('Watchlist: prioritized IV heat badges and summary copy rendered', () => {
   assert.ok(HTML.includes('id="watchlist-summary"'), 'watchlist summary missing');
   assert.ok(HTML.includes('Prioritized by IV Rank.'), 'summary copy missing');
+  assert.ok(HTML.includes('Tilt:'), 'tilt summary copy missing');
   ['wl-heat', 'wl-heat-hot', 'wl-heat-elevated', 'wl-heat-neutral', 'wl-heat-calm'].forEach(cls => {
     assert.ok(HTML.includes('.' + cls), `${cls} CSS missing`);
   });
+  ['wl-tilt', 'wl-tilt-bullish', 'wl-tilt-bearish', 'wl-tilt-neutral'].forEach(cls => {
+    assert.ok(HTML.includes('.' + cls), `${cls} CSS missing`);
+  });
   ['🔥 Hot IV', '⚡ Elevated IV', '◐ Balanced IV', '🧊 Calm IV'].forEach(label => {
+    assert.ok(HTML.includes(label), `${label} label missing`);
+  });
+  ['Bullish lean', 'Bearish lean', 'Neutral mix'].forEach(label => {
     assert.ok(HTML.includes(label), `${label} label missing`);
   });
 });

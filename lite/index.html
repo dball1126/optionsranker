@@ -392,6 +392,19 @@ body {
 .wl-heat-elevated { background: rgba(255, 184, 77, 0.12); color: #ffd27d; border: 1px solid rgba(255, 184, 77, 0.24); }
 .wl-heat-neutral { background: rgba(91, 141, 239, 0.12); color: #9fc1ff; border: 1px solid rgba(91, 141, 239, 0.24); }
 .wl-heat-calm { background: rgba(132, 145, 166, 0.12); color: #b8c2d6; border: 1px solid rgba(132, 145, 166, 0.24); }
+.wl-tilt {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+.wl-tilt-bullish { background: rgba(72, 187, 120, 0.12); color: #7de2a1; border: 1px solid rgba(72, 187, 120, 0.22); }
+.wl-tilt-bearish { background: rgba(255, 107, 107, 0.12); color: #ff9a9a; border: 1px solid rgba(255, 107, 107, 0.22); }
+.wl-tilt-neutral { background: rgba(91, 141, 239, 0.12); color: #9fc1ff; border: 1px solid rgba(91, 141, 239, 0.22); }
 .wl-meta { font-size: 11px; color: var(--dim); flex: 1; }
 .wl-remove {
   background: transparent;
@@ -4270,14 +4283,29 @@ function sortWatchlistByPriority(list) {
   });
 }
 function summarizeWatchlist(items) {
-  const summary = { hot: 0, elevated: 0, calm: 0 };
+  const summary = { hot: 0, elevated: 0, calm: 0, bullish: 0, bearish: 0, neutral: 0 };
   items.forEach(it => {
     const heat = getIvHeat(it.ivRank);
+    const tilt = classifyStrategyTilt(it.topStrategy);
     if (heat.priority >= 4) summary.hot += 1;
     else if (heat.priority >= 3) summary.elevated += 1;
     else summary.calm += 1;
+    if (tilt.key === 'bullish') summary.bullish += 1;
+    else if (tilt.key === 'bearish') summary.bearish += 1;
+    else summary.neutral += 1;
   });
   return summary;
+}
+function classifyStrategyTilt(strategyName) {
+  const label = typeof strategyName === 'string' ? strategyName.toLowerCase() : '';
+  if (!label) return { key: 'neutral', label: 'Neutral mix', className: 'wl-tilt-neutral' };
+  if (label.includes('long put') || label.includes('bear put') || label.includes('bear call')) {
+    return { key: 'bearish', label: 'Bearish lean', className: 'wl-tilt-bearish' };
+  }
+  if (label.includes('long call') || label.includes('bull call') || label.includes('cash-secured put') || label.includes('covered call')) {
+    return { key: 'bullish', label: 'Bullish lean', className: 'wl-tilt-bullish' };
+  }
+  return { key: 'neutral', label: 'Neutral mix', className: 'wl-tilt-neutral' };
 }
 function getAccountSize() {
   try {
@@ -4378,18 +4406,20 @@ function renderWatchlist() {
   if (items.length === 0) { wrap.style.display = 'none'; return; }
   wrap.style.display = 'block';
   const summary = summarizeWatchlist(items);
-  summaryEl.textContent = 'Prioritized by IV Rank. ' + summary.hot + ' hot setup' + (summary.hot === 1 ? '' : 's') + ', ' + summary.elevated + ' elevated, ' + summary.calm + ' calm.';
+  summaryEl.textContent = 'Prioritized by IV Rank. ' + summary.hot + ' hot setup' + (summary.hot === 1 ? '' : 's') + ', ' + summary.elevated + ' elevated, ' + summary.calm + ' calm. Tilt: ' + summary.bullish + ' bullish, ' + summary.bearish + ' bearish, ' + summary.neutral + ' neutral.';
   listEl.innerHTML = items.map(it => {
     const metaBits = [];
     if (typeof it.ivRank === 'number') metaBits.push('IV Rank ' + it.ivRank + '%');
     if (it.topStrategy) metaBits.push(it.topStrategy);
     const meta = metaBits.length ? metaBits.join(' \u00B7 ') : 'Click to analyze';
     const heat = getIvHeat(it.ivRank);
+    const tilt = classifyStrategyTilt(it.topStrategy);
     return `<div class="watchlist-item" data-ticker="${it.symbol}">
       <div class="wl-main">
         <div class="wl-topline">
           <span class="wl-symbol">${it.symbol}</span>
           <span class="wl-heat ${heat.className}">${heat.label}</span>
+          <span class="wl-tilt ${tilt.className}">${tilt.label}</span>
         </div>
         <span class="wl-meta">${meta}</span>
       </div>
