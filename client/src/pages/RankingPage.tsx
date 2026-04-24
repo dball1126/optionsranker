@@ -1,18 +1,19 @@
-import { useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useCallback, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useRankingStore } from '@/stores/rankingStore';
 import { useMarketStore } from '@/stores/marketStore';
 import { RankedStrategyCard } from '@/components/ranking/RankedStrategyCard';
 import { Card } from '@/components/ui/Card';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { formatCurrency, formatPercent, formatDate } from '@/lib/utils';
-import type { RankedStrategy } from '@optionsranker/shared';
+import type { RankedStrategy, RankingMode } from '@optionsranker/shared';
 
 export default function RankingPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [query, setQuery] = useState('');
   const { searchResults, isSearching, searchSymbols, clearSearch } = useMarketStore();
-  const { symbol, underlyingPrice, expiration, rankedStrategies, isLoading, error, fetchRankings } = useRankingStore();
+  const { symbol, rankingMode, expiration, rankedStrategies, isLoading, error, fetchRankings, setRankingMode } = useRankingStore();
   const quote = useMarketStore((s) => symbol ? s.quotes[symbol] : null);
   const fetchQuote = useMarketStore((s) => s.fetchQuote);
 
@@ -29,8 +30,15 @@ export default function RankingPage() {
     setQuery(sym);
     clearSearch();
     fetchQuote(sym);
-    fetchRankings(sym);
-  }, [clearSearch, fetchQuote, fetchRankings]);
+    fetchRankings(sym, rankingMode);
+  }, [clearSearch, fetchQuote, fetchRankings, rankingMode]);
+
+  const handleModeChange = useCallback((mode: RankingMode) => {
+    setRankingMode(mode);
+    if (symbol) {
+      fetchRankings(symbol, mode);
+    }
+  }, [fetchRankings, setRankingMode, symbol]);
 
   const handleBuild = useCallback((strategy: RankedStrategy) => {
     // Navigate to strategy builder with legs pre-loaded via URL params
@@ -40,6 +48,13 @@ export default function RankingPage() {
     });
     navigate(`/strategy-builder?${params.toString()}`);
   }, [navigate, symbol]);
+
+  useEffect(() => {
+    const symbolParam = searchParams.get('symbol');
+    if (symbolParam && symbolParam !== symbol) {
+      handleSelect(symbolParam.toUpperCase());
+    }
+  }, [handleSelect, searchParams, symbol]);
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -87,6 +102,33 @@ export default function RankingPage() {
           </div>
         )}
       </div>
+
+      <Card className="p-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-sm font-medium text-slate-300">Ranking Mode</span>
+          <div className="inline-flex rounded-lg border border-slate-700 bg-slate-900/60 p-1">
+            {(['current', 'aeroc'] as RankingMode[]).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => handleModeChange(mode)}
+                className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
+                  rankingMode === mode
+                    ? 'bg-emerald-600 text-white'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                {mode === 'current' ? 'Enhanced' : 'AEROC'}
+              </button>
+            ))}
+          </div>
+          <span className="text-xs text-slate-500">
+            {rankingMode === 'aeroc'
+              ? 'Debit-only screen using EV and annualized return on capital.'
+              : 'Current multi-factor ranker with broader strategy coverage.'}
+          </span>
+        </div>
+      </Card>
 
       {/* Quote bar */}
       {symbol && quote && (
@@ -154,8 +196,8 @@ export default function RankingPage() {
           <div className="text-5xl mb-4">🏆</div>
           <h2 className="text-xl font-semibold text-slate-200 mb-2">Rank Options Strategies</h2>
           <p className="text-slate-400 max-w-md mx-auto">
-            Enter a ticker symbol above to scan the real options chain and rank all 10 strategy
-            types by expected profitability, probability of profit, and risk/reward ratio.
+            Enter a ticker symbol above to scan the real options chain and rank strategies.
+            Use AEROC for a stricter debit-trade screen or Enhanced for the broader house model.
           </p>
         </Card>
       )}

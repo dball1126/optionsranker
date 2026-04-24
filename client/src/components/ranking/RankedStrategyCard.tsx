@@ -39,6 +39,8 @@ export function RankedStrategyCard({ strategy, onBuild }: RankedStrategyCardProp
   const sentiment = SENTIMENT_MAP[s.strategyType] || { label: 'Custom', variant: 'neutral' as const };
   const maxProfit = s.maxProfit === 'unlimited' ? 'Unlimited' : formatCurrency(s.maxProfit);
   const maxLoss = s.maxLoss === 'unlimited' ? 'Unlimited' : formatCurrency(s.maxLoss);
+  const showAeroc = s.rankingMode === 'aeroc';
+  const strikes = s.strikes || [];
 
   return (
     <Card className="hover:border-slate-600 transition-colors" data-testid="ranked-strategy-card">
@@ -55,6 +57,7 @@ export function RankedStrategyCard({ strategy, onBuild }: RankedStrategyCardProp
             <h3 className="text-lg font-semibold text-slate-100">{s.strategyName}</h3>
             <div className="flex items-center gap-2 mt-0.5">
               <Badge variant={sentiment.variant}>{sentiment.label}</Badge>
+              {showAeroc && <Badge variant="warning">AEROC</Badge>}
               <span className="text-xs text-slate-500">Exp: {formatDate(s.expiration)}</span>
             </div>
           </div>
@@ -63,7 +66,7 @@ export function RankedStrategyCard({ strategy, onBuild }: RankedStrategyCardProp
         {/* Score bar */}
         <div className="mb-4">
           <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-            <span>Score</span>
+            <span>{showAeroc ? 'Relative AEROC' : 'Score'}</span>
             <span className="font-mono">{(s.score * 100).toFixed(1)}%</span>
           </div>
           <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
@@ -90,16 +93,25 @@ export function RankedStrategyCard({ strategy, onBuild }: RankedStrategyCardProp
             </div>
           </div>
           <div>
-            <div className="text-xs text-slate-500">Risk/Reward</div>
-            <div className="text-sm font-semibold text-slate-300">{s.riskRewardRatio.toFixed(2)}x</div>
+            <div className="text-xs text-slate-500">{showAeroc ? 'AEROC' : 'Risk/Reward'}</div>
+            <div className="text-sm font-semibold text-slate-300">
+              {showAeroc && s.aeroc != null ? `${(s.aeroc * 100).toFixed(1)}%` : `${s.riskRewardRatio.toFixed(2)}x`}
+            </div>
           </div>
           <div>
-            <div className="text-xs text-slate-500">Net Cost</div>
+            <div className="text-xs text-slate-500">{showAeroc ? 'Debit Paid' : 'Net Cost'}</div>
             <div className={cn('text-sm font-semibold', s.netDebit > 0 ? 'text-rose-400' : 'text-emerald-400')}>
-              {s.netDebit > 0 ? formatCurrency(s.netDebit) : `+${formatCurrency(Math.abs(s.netDebit))}`}
+              {showAeroc ? formatCurrency(s.debitPaid ?? s.netDebit) : (s.netDebit > 0 ? formatCurrency(s.netDebit) : `+${formatCurrency(Math.abs(s.netDebit))}`)}
             </div>
           </div>
         </div>
+
+        {showAeroc && (
+          <div className="flex items-center justify-between rounded-lg bg-slate-900/50 px-3 py-2 text-xs text-slate-400 mb-4">
+            <span>EROC: <span className="font-mono text-slate-200">{s.eroc != null ? `${(s.eroc * 100).toFixed(1)}%` : '—'}</span></span>
+            <span>Strikes: <span className="font-mono text-slate-200">{strikes.length ? strikes.map((strike) => `$${strike.toFixed(0)}`).join(' / ') : '—'}</span></span>
+          </div>
+        )}
 
         {/* Legs */}
         <div className="bg-slate-900/50 rounded-lg p-3 mb-4">

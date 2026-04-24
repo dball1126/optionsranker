@@ -5,9 +5,12 @@ import http from 'node:http';
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
-// ChartNova proxy (port 8777) reliably handles Yahoo Finance requests.
-// tsx's undici/fetch gets rate-limited by Yahoo — route through the proxy instead.
-const PROXY_BASE = process.env.YAHOO_PROXY_URL || 'http://localhost:8777';
+const DEFAULT_PROXY_BASES = [
+  process.env.YAHOO_PROXY_URL,
+  'http://127.0.0.1:8789',
+  'http://localhost:8777',
+  'https://optionsranker.pages.dev',
+].filter((value): value is string => Boolean(value));
 
 /** Fetch JSON via HTTP(S) using Node's native modules */
 function httpGet(url: string, extraHeaders?: Record<string, string>): Promise<{ status: number; body: string }> {
@@ -27,6 +30,24 @@ function httpJSON(url: string, extraHeaders?: Record<string, string>): Promise<a
     if (status !== 200) throw new Error(`HTTP ${status}: ${body.substring(0, 50)}`);
     return JSON.parse(body);
   });
+}
+
+async function firstSuccessfulJSON(
+  path: string,
+  validate: (payload: any) => boolean,
+): Promise<any | null> {
+  for (const base of DEFAULT_PROXY_BASES) {
+    try {
+      const payload = await httpJSON(`${base}${path}`);
+      if (validate(payload)) {
+        return payload;
+      }
+    } catch {
+      // Try next source.
+    }
+  }
+
+  return null;
 }
 
 class RealMarketDataService {
@@ -49,8 +70,10 @@ class RealMarketDataService {
     if (cached && this.isCacheValid(cached.timestamp)) return cached.data;
 
     try {
-      // Route through ChartNova proxy to avoid Yahoo rate limits on tsx/undici
-      const data = await httpJSON(`${PROXY_BASE}/api/chart/${symbol}`);
+      const data = await firstSuccessfulJSON(
+        `/api/chart/${symbol}`,
+        (payload) => Boolean(payload?.chart?.result?.[0]?.meta),
+      );
       if (!data.chart?.result?.[0]) return null;
 
       const meta = data.chart.result[0].meta;
@@ -129,16 +152,31 @@ class RealMarketDataService {
     if (!query || query.length < 1) return [];
 
     try {
-      const data = await httpJSON(`${PROXY_BASE}/api/search?q=${encodeURIComponent(query)}&quotesCount=10`);
+      const directSearchUrl = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=10&newsCount=0`;
+      const proxySearchPath = `/api/search?q=${encodeURIComponent(query)}&quotesCount=10`;
+      const data = (
+        await httpJSON(directSearchUrl).catch(async () =>
+          firstSuccessfulJSON(proxySearchPath, (payload) => Array.isArray(payload?.quotes)),
+        )
+      );
       if (!data.quotes) return [];
 
-      const symbols = data.quotes
+      return data.quotes
         .filter((item: any) => ['EQUITY', 'ETF', 'INDEX'].includes(item.quoteType))
         .slice(0, 10)
-        .map((item: any) => item.symbol);
-
-      const results = await Promise.all(symbols.map((s: string) => this.getQuote(s)));
-      return results.filter((q): q is Quote => q !== null);
+        .map((item: any) => ({
+          symbol: item.symbol,
+          name: item.shortname || item.longname || item.symbol,
+          price: Number(item.regularMarketPrice || 0),
+          change: Number(item.regularMarketChange || 0),
+          changePercent: Number(item.regularMarketChangePercent || 0),
+          volume: 0,
+          high: Number(item.regularMarketPrice || 0),
+          low: Number(item.regularMarketPrice || 0),
+          open: Number(item.regularMarketPrice || 0),
+          previousClose: Number(item.regularMarketPrice || 0),
+          timestamp: new Date().toISOString(),
+        }));
     } catch (error) {
       console.error('[RealData] Search error:', error);
       return [];
@@ -153,8 +191,11 @@ class RealMarketDataService {
     if (cached && this.isCacheValid(cached.timestamp)) return cached.data;
 
     try {
-      // Route through ChartNova proxy which handles crumb auth reliably
-      const data = await httpJSON(`${PROXY_BASE}/api/options/${symbol}`);
+      const data = await firstSuccessfulJSON(
+        `/api/options/${symbol}`,
+        (payload) => Boolean(payload?.optionChain?.result?.[0]),
+      );
+      if (!data) return null;
       const result = data.optionChain?.result?.[0];
       if (!result) return null;
 
@@ -179,8 +220,11 @@ class RealMarketDataService {
       // Fetch remaining expirations
       for (let i = 1; i < expirationEpochs.length; i++) {
         try {
-          const expData = await httpJSON(`${PROXY_BASE}/api/options/${symbol}?date=${expirationEpochs[i]}`);
-          const expResult = expData.optionChain?.result?.[0];
+          const expData = await firstSuccessfulJSON(
+            `/api/options/${symbol}?date=${expirationEpochs[i]}`,
+            (payload) => Boolean(payload?.optionChain?.result?.[0]?.options?.[0]),
+          );
+          const expResult = expData?.optionChain?.result?.[0];
           if (expResult?.options?.[0]) {
             const expStr = expirations[i];
             chain[expStr] = {

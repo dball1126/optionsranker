@@ -1,10 +1,9 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, HTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
 
-interface CardProps {
+interface CardProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
   className?: string;
-  onClick?: () => void;
 }
 
 interface CardHeaderProps {
@@ -22,7 +21,7 @@ interface CardFooterProps {
   className?: string;
 }
 
-export function Card({ children, className, onClick }: CardProps) {
+export function Card({ children, className, onClick, ...props }: CardProps) {
   return (
     <div
       className={cn(
@@ -31,6 +30,7 @@ export function Card({ children, className, onClick }: CardProps) {
         className,
       )}
       onClick={onClick}
+      {...props}
     >
       {children}
     </div>

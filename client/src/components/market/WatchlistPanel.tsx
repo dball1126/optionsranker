@@ -17,6 +17,12 @@ export function WatchlistPanel({ onSelectSymbol }: WatchlistPanelProps) {
   const [showAddInput, setShowAddInput] = useState(false);
 
   const fetchWatchlists = async () => {
+    if (!localStorage.getItem('accessToken')) {
+      setWatchlists([]);
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     try {
       const response = await watchlistsApi.list();

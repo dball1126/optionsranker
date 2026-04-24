@@ -28,6 +28,7 @@ export function MobileNavigation() {
   const navItems = [
     { path: '/', icon: Home, label: 'Dashboard' },
     { path: '/market', icon: Search, label: 'Market' },
+    { path: '/scanner', icon: TrendingUp, label: 'Scanner' },
     { path: '/strategy-builder', icon: BarChart3, label: 'Strategies' },
     { path: '/portfolio', icon: Wallet, label: 'Portfolio' },
     { path: '/education', icon: BookOpen, label: 'Learn' },

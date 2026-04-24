@@ -1,5 +1,19 @@
-import type { OptionsChain, OptionsContract, StrategyLeg, RankedStrategy, RankingResponse } from '@optionsranker/shared';
-import { STRATEGY_TEMPLATES } from '@optionsranker/shared';
+import type {
+  OptionsContract,
+  StrategyLeg,
+  RankedStrategy,
+  RankingResponse,
+  RankingMode,
+  Quote,
+  ScannerResponse,
+  ScannerResult,
+  ScannerSectorDefinition,
+} from '@optionsranker/shared';
+import {
+  STRATEGY_TEMPLATES,
+  MARKET_SCANNER_CORE_STRATEGIES,
+  MARKET_SCANNER_SECTORS,
+} from '@optionsranker/shared';
 import { normalCDF } from '../utils/blackScholes.js';
 import { analyzeStrategy } from './strategy.service.js';
 import { realMarketDataService } from './realMarketData.service.js';
@@ -7,6 +21,11 @@ import { realMarketDataService } from './realMarketData.service.js';
 const R = 0.05; // risk-free rate
 const MIN_LIQUIDITY = 10; // minimum volume + OI per leg
 const MAX_RISK_REWARD_CAP = 10; // cap for unlimited-profit strategies
+const MAX_BID_ASK_SPREAD_RATIO = 0.10;
+const MARKET_SCANNER_CACHE_MS = 5 * 60 * 1000;
+const MARKET_SCANNER_CONCURRENCY = 4;
+const MARKET_SCANNER_MIN_LIQUIDITY_SCORE = 25;
+const scannerCache = new Map<string, { timestamp: number; data: ScannerResponse }>();
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
@@ -52,9 +71,13 @@ function midPrice(c: OptionsContract): number {
   return c.last || c.ask || 0;
 }
 
+function hasTightSpread(c: OptionsContract): boolean {
+  return c.ask > 0 && c.bid > 0 && ((c.ask - c.bid) / c.ask) <= MAX_BID_ASK_SPREAD_RATIO;
+}
+
 /** Check if a contract has sufficient liquidity */
 function isLiquid(c: OptionsContract): boolean {
-  return (c.volume + c.openInterest) >= MIN_LIQUIDITY;
+  return (c.volume + c.openInterest) >= MIN_LIQUIDITY && hasTightSpread(c);
 }
 
 /** Average IV across a set of contracts */
@@ -359,18 +382,22 @@ function selectExpiration(expirations: string[]): string | null {
   return expirations[expirations.length - 1]; // fallback to furthest
 }
 
-export async function rankStrategies(symbol: string): Promise<RankingResponse> {
+export async function rankStrategies(symbol: string, mode: RankingMode = 'current'): Promise<RankingResponse> {
   const chain = await realMarketDataService.getOptionsChain(symbol);
   if (!chain || chain.expirations.length === 0) {
-    return { symbol, underlyingPrice: 0, expiration: '', rankedStrategies: [] };
+    return { symbol, rankingMode: mode, underlyingPrice: 0, expiration: '', rankedStrategies: [] };
   }
 
   const S = chain.underlyingPrice;
   const expiration = selectExpiration(chain.expirations);
-  if (!expiration) return { symbol, underlyingPrice: S, expiration: '', rankedStrategies: [] };
+  if (!expiration) return { symbol, rankingMode: mode, underlyingPrice: S, expiration: '', rankedStrategies: [] };
 
   const expData = chain.chain[expiration];
-  if (!expData) return { symbol, underlyingPrice: S, expiration, rankedStrategies: [] };
+  if (!expData) return { symbol, rankingMode: mode, underlyingPrice: S, expiration, rankedStrategies: [] };
+
+  if (mode === 'aeroc') {
+    return rankStrategiesByAEROC(symbol, S, expiration, expData.calls, expData.puts);
+  }
 
   const { calls, puts } = expData;
   const sigma = avgIV([...calls, ...puts]);
@@ -396,7 +423,7 @@ export async function rankStrategies(symbol: string): Promise<RankingResponse> {
   }
 
   if (candidates.length === 0) {
-    return { symbol, underlyingPrice: S, expiration, rankedStrategies: [] };
+    return { symbol, rankingMode: mode, underlyingPrice: S, expiration, rankedStrategies: [] };
   }
 
   // Score each strategy
@@ -445,10 +472,12 @@ export async function rankStrategies(symbol: string): Promise<RankingResponse> {
 
       return {
         rank: 0,
+        rankingMode: 'current' as const,
         strategyType: concrete.strategyType as any,
         strategyName: concrete.strategyName,
         score: Math.round(score * 10000) / 10000,
         legs: concrete.legs,
+        strikes: concrete.legs.map((leg) => leg.strike).filter((strike): strike is number => typeof strike === 'number'),
         maxProfit: analysis.maxProfit,
         maxLoss: analysis.maxLoss,
         breakeven: analysis.breakeven,
@@ -457,13 +486,389 @@ export async function rankStrategies(symbol: string): Promise<RankingResponse> {
         riskRewardRatio: Math.round(riskReward * 100) / 100,
         liquidityScore,
         netDebit: Math.round(concrete.netDebit * 100) / 100,
+        debitPaid: Math.round(Math.abs(concrete.netDebit) * 100) / 100,
+        eroc: null,
+        aeroc: null,
         expiration,
       };
     })
     .sort((a, b) => b.score - a.score)
     .map((s, i) => ({ ...s, rank: i + 1 }));
 
-  return { symbol: symbol.toUpperCase(), underlyingPrice: S, expiration, rankedStrategies: ranked };
+  return { symbol: symbol.toUpperCase(), rankingMode: mode, underlyingPrice: S, expiration, rankedStrategies: ranked };
+}
+
+function isScannerStrategy(strategy: RankedStrategy): boolean {
+  return MARKET_SCANNER_CORE_STRATEGIES.includes(strategy.strategyType);
+}
+
+function dedupeSymbols(sectors: ScannerSectorDefinition[]): string[] {
+  return [...new Set(sectors.flatMap((sector) => sector.symbols))];
+}
+
+function createScannerCacheKey(sectorId?: string): string {
+  return sectorId ? `sector:${sectorId}` : 'all';
+}
+
+function getScannerSectors(sectorId?: string): ScannerSectorDefinition[] {
+  if (!sectorId) return MARKET_SCANNER_SECTORS;
+  return MARKET_SCANNER_SECTORS.filter((sector) => sector.id === sectorId);
+}
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  worker: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = [];
+  let cursor = 0;
+
+  async function runWorker(): Promise<void> {
+    while (cursor < items.length) {
+      const index = cursor++;
+      results[index] = await worker(items[index]);
+    }
+  }
+
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => runWorker()));
+  return results;
+}
+
+async function buildScannerCandidate(
+  symbol: string,
+  sector: ScannerSectorDefinition,
+): Promise<(Omit<ScannerResult, 'rank' | 'sectorRank' | 'scannerScore'> & { rawLiquidity: number }) | null> {
+  const [quote, ranking] = await Promise.all([
+    realMarketDataService.getQuote(symbol),
+    rankStrategies(symbol, 'current'),
+  ]);
+
+  const strategy = ranking.rankedStrategies.find((candidate) =>
+    isScannerStrategy(candidate) && candidate.liquidityScore >= MARKET_SCANNER_MIN_LIQUIDITY_SCORE,
+  );
+
+  if (!quote || !strategy) return null;
+
+  return {
+    symbol,
+    companyName: quote.name || symbol,
+    sector: sector.id,
+    sectorLabel: sector.label,
+    underlyingPrice: ranking.underlyingPrice || quote.price,
+    priceChange: quote.change,
+    priceChangePercent: quote.changePercent,
+    baseScore: strategy.score,
+    strategy,
+    rawLiquidity: strategy.liquidityScore,
+  };
+}
+
+function finalizeScannerResults(
+  candidates: Array<Omit<ScannerResult, 'rank' | 'sectorRank' | 'scannerScore'> & { rawLiquidity: number }>,
+): ScannerResult[] {
+  if (candidates.length === 0) return [];
+
+  const maxLiquidity = Math.max(...candidates.map((candidate) => candidate.rawLiquidity), 1);
+  const maxExpectedValue = Math.max(...candidates.map((candidate) => Math.abs(candidate.strategy.expectedValue)), 1);
+  const sectorMaxScores = new Map<string, number>();
+
+  for (const candidate of candidates) {
+    const currentMax = sectorMaxScores.get(candidate.sector) || 0;
+    sectorMaxScores.set(candidate.sector, Math.max(currentMax, candidate.baseScore));
+  }
+
+  const scored = candidates
+    .map((candidate) => {
+      const sectorMax = sectorMaxScores.get(candidate.sector) || candidate.baseScore || 1;
+      const sectorRelative = sectorMax > 0 ? candidate.baseScore / sectorMax : 0;
+      const normalizedEV = Math.min(Math.abs(candidate.strategy.expectedValue) / maxExpectedValue, 1);
+      const normalizedLiquidity = Math.min(candidate.rawLiquidity / maxLiquidity, 1);
+      const scannerScore = (
+        candidate.baseScore * 0.65 +
+        sectorRelative * 0.20 +
+        candidate.strategy.probabilityOfProfit * 0.10 +
+        normalizedEV * 0.03 +
+        normalizedLiquidity * 0.02
+      );
+
+      return {
+        ...candidate,
+        scannerScore: Math.max(0, Math.min(1, Math.round(scannerScore * 10000) / 10000)),
+      };
+    })
+    .sort((a, b) => {
+      if (b.scannerScore !== a.scannerScore) return b.scannerScore - a.scannerScore;
+      return b.baseScore - a.baseScore;
+    });
+
+  const sectorRanks = new Map<string, number>();
+  return scored.map((candidate, index) => {
+    const nextSectorRank = (sectorRanks.get(candidate.sector) || 0) + 1;
+    sectorRanks.set(candidate.sector, nextSectorRank);
+    const { rawLiquidity, ...rest } = candidate;
+    return {
+      ...rest,
+      rank: index + 1,
+      sectorRank: nextSectorRank,
+    };
+  });
+}
+
+export async function scanMarketStrategies(sectorId?: string): Promise<ScannerResponse> {
+  const sectors = getScannerSectors(sectorId);
+  if (sectors.length === 0) {
+    return {
+      rankingMode: 'current',
+      asOf: new Date().toISOString(),
+      cached: false,
+      universeSize: 0,
+      sectors: [],
+      results: [],
+    };
+  }
+
+  const cacheKey = createScannerCacheKey(sectorId);
+  const cached = scannerCache.get(cacheKey);
+  if (cached && (Date.now() - cached.timestamp) < MARKET_SCANNER_CACHE_MS) {
+    return { ...cached.data, cached: true };
+  }
+
+  const symbols = dedupeSymbols(sectors);
+  const candidates = await mapWithConcurrency(symbols, MARKET_SCANNER_CONCURRENCY, async (symbol) => {
+    const sector = sectors.find((entry) => entry.symbols.includes(symbol));
+    if (!sector) return null;
+    try {
+      return await buildScannerCandidate(symbol, sector);
+    } catch (error) {
+      console.error(`[Scanner] Failed to scan ${symbol}:`, error);
+      return null;
+    }
+  });
+
+  const results = finalizeScannerResults(
+    candidates.filter((candidate): candidate is NonNullable<typeof candidate> => candidate !== null),
+  );
+
+  const response: ScannerResponse = {
+    rankingMode: 'current',
+    asOf: new Date().toISOString(),
+    cached: false,
+    universeSize: symbols.length,
+    sectors,
+    results,
+  };
+
+  scannerCache.set(cacheKey, { timestamp: Date.now(), data: response });
+  return response;
+}
+
+interface AEROCStrategyCandidate {
+  strategyType: 'long_call' | 'long_put' | 'bull_call_spread' | 'bear_put_spread';
+  strategyName: string;
+  legs: StrategyLeg[];
+  strikes: number[];
+  breakeven: number[];
+  debitPaid: number;
+  maxProfit: number;
+  maxLoss: number;
+  probabilityOfProfit: number;
+  expectedValue: number;
+  eroc: number;
+  aeroc: number;
+  riskRewardRatio: number;
+  liquidityScore: number;
+}
+
+function clampProbability(value: number): number {
+  return Math.max(0, Math.min(1, value));
+}
+
+function absoluteDelta(contract: OptionsContract): number {
+  return Math.abs(contract.greeks.delta || 0);
+}
+
+function buildLongSingleCandidates(
+  contracts: OptionsContract[],
+  expiration: string,
+  underlyingPrice: number,
+  optionType: 'call' | 'put',
+): AEROCStrategyCandidate[] {
+  return contracts
+    .filter(isLiquid)
+    .map((contract) => {
+      const debitPaid = contract.ask * 100;
+      const maxProfit = underlyingPrice * 0.20 * 100;
+      const maxLoss = debitPaid;
+      const probabilityOfProfit = clampProbability(absoluteDelta(contract));
+      const expectedValue = (probabilityOfProfit * maxProfit) - ((1 - probabilityOfProfit) * maxLoss);
+      const eroc = debitPaid > 0 ? expectedValue / debitPaid : -Infinity;
+      const dte = Math.max(1, Math.ceil((new Date(expiration).getTime() - Date.now()) / 86400000));
+      const aeroc = eroc * (365 / dte);
+      const strategyType: AEROCStrategyCandidate['strategyType'] = optionType === 'call' ? 'long_call' : 'long_put';
+      const strategyName = optionType === 'call' ? 'Long Call' : 'Long Put';
+      const breakeven = optionType === 'call'
+        ? [contract.strike + contract.ask]
+        : [contract.strike - contract.ask];
+      return {
+        strategyType,
+        strategyName,
+        legs: [{
+          type: optionType,
+          direction: 'buy' as const,
+          quantity: 1,
+          strike: contract.strike,
+          premium: contract.ask,
+          expiration,
+        }],
+        strikes: [contract.strike],
+        debitPaid,
+        maxProfit,
+        maxLoss,
+        probabilityOfProfit,
+        expectedValue,
+        eroc,
+        aeroc,
+        riskRewardRatio: maxLoss > 0 ? maxProfit / maxLoss : MAX_RISK_REWARD_CAP,
+        liquidityScore: contract.volume + contract.openInterest,
+        breakeven,
+      };
+    })
+    .filter((candidate) => candidate.expectedValue > 0);
+}
+
+function buildBullCallSpreadCandidates(calls: OptionsContract[], expiration: string): AEROCStrategyCandidate[] {
+  const liquidCalls = [...calls].filter(isLiquid).sort((a, b) => a.strike - b.strike);
+  const candidates: AEROCStrategyCandidate[] = [];
+  for (let i = 0; i < liquidCalls.length; i++) {
+    for (let j = i + 1; j < liquidCalls.length; j++) {
+      const longLeg = liquidCalls[i];
+      const shortLeg = liquidCalls[j];
+      const debitPaid = (longLeg.ask - shortLeg.bid) * 100;
+      if (debitPaid <= 0) continue;
+      const width = (shortLeg.strike - longLeg.strike) * 100;
+      const maxProfit = width - debitPaid;
+      if (maxProfit <= 0) continue;
+      const maxLoss = debitPaid;
+      const probabilityOfProfit = clampProbability(absoluteDelta(longLeg) - absoluteDelta(shortLeg));
+      const expectedValue = (probabilityOfProfit * maxProfit) - ((1 - probabilityOfProfit) * maxLoss);
+      if (expectedValue <= 0) continue;
+      const dte = Math.max(1, Math.ceil((new Date(expiration).getTime() - Date.now()) / 86400000));
+      const eroc = expectedValue / debitPaid;
+      candidates.push({
+        strategyType: 'bull_call_spread',
+        strategyName: 'Bull Call Spread',
+        legs: [
+          { type: 'call', direction: 'buy' as const, quantity: 1, strike: longLeg.strike, premium: longLeg.ask, expiration },
+          { type: 'call', direction: 'sell' as const, quantity: 1, strike: shortLeg.strike, premium: shortLeg.bid, expiration },
+        ],
+        strikes: [longLeg.strike, shortLeg.strike],
+        debitPaid,
+        maxProfit,
+        maxLoss,
+        probabilityOfProfit,
+        expectedValue,
+        eroc,
+        aeroc: eroc * (365 / dte),
+        riskRewardRatio: maxLoss > 0 ? maxProfit / maxLoss : MAX_RISK_REWARD_CAP,
+        liquidityScore: Math.min(longLeg.volume + longLeg.openInterest, shortLeg.volume + shortLeg.openInterest),
+        breakeven: [longLeg.strike + (debitPaid / 100)],
+      });
+    }
+  }
+  return candidates;
+}
+
+function buildBearPutSpreadCandidates(puts: OptionsContract[], expiration: string): AEROCStrategyCandidate[] {
+  const liquidPuts = [...puts].filter(isLiquid).sort((a, b) => a.strike - b.strike);
+  const candidates: AEROCStrategyCandidate[] = [];
+  for (let i = 0; i < liquidPuts.length; i++) {
+    for (let j = i + 1; j < liquidPuts.length; j++) {
+      const shortLeg = liquidPuts[i];
+      const longLeg = liquidPuts[j];
+      const debitPaid = (longLeg.ask - shortLeg.bid) * 100;
+      if (debitPaid <= 0) continue;
+      const width = (longLeg.strike - shortLeg.strike) * 100;
+      const maxProfit = width - debitPaid;
+      if (maxProfit <= 0) continue;
+      const maxLoss = debitPaid;
+      const probabilityOfProfit = clampProbability(absoluteDelta(longLeg) - absoluteDelta(shortLeg));
+      const expectedValue = (probabilityOfProfit * maxProfit) - ((1 - probabilityOfProfit) * maxLoss);
+      if (expectedValue <= 0) continue;
+      const dte = Math.max(1, Math.ceil((new Date(expiration).getTime() - Date.now()) / 86400000));
+      const eroc = expectedValue / debitPaid;
+      candidates.push({
+        strategyType: 'bear_put_spread',
+        strategyName: 'Bear Put Spread',
+        legs: [
+          { type: 'put', direction: 'buy' as const, quantity: 1, strike: longLeg.strike, premium: longLeg.ask, expiration },
+          { type: 'put', direction: 'sell' as const, quantity: 1, strike: shortLeg.strike, premium: shortLeg.bid, expiration },
+        ],
+        strikes: [longLeg.strike, shortLeg.strike],
+        debitPaid,
+        maxProfit,
+        maxLoss,
+        probabilityOfProfit,
+        expectedValue,
+        eroc,
+        aeroc: eroc * (365 / dte),
+        riskRewardRatio: maxLoss > 0 ? maxProfit / maxLoss : MAX_RISK_REWARD_CAP,
+        liquidityScore: Math.min(longLeg.volume + longLeg.openInterest, shortLeg.volume + shortLeg.openInterest),
+        breakeven: [longLeg.strike - (debitPaid / 100)],
+      });
+    }
+  }
+  return candidates;
+}
+
+function rankStrategiesByAEROC(
+  symbol: string,
+  underlyingPrice: number,
+  expiration: string,
+  calls: OptionsContract[],
+  puts: OptionsContract[],
+): RankingResponse {
+  const candidates = [
+    ...buildLongSingleCandidates(calls, expiration, underlyingPrice, 'call'),
+    ...buildLongSingleCandidates(puts, expiration, underlyingPrice, 'put'),
+    ...buildBullCallSpreadCandidates(calls, expiration),
+    ...buildBearPutSpreadCandidates(puts, expiration),
+  ];
+
+  const positive = candidates
+    .filter((candidate) => Number.isFinite(candidate.aeroc) && candidate.expectedValue > 0)
+    .sort((a, b) => b.aeroc - a.aeroc)
+    .slice(0, 10);
+
+  const maxAeroc = Math.max(...positive.map((candidate) => candidate.aeroc), 1);
+  const rankedStrategies: RankedStrategy[] = positive.map((candidate, index) => ({
+    rank: index + 1,
+    rankingMode: 'aeroc' as const,
+    strategyType: candidate.strategyType,
+    strategyName: candidate.strategyName,
+    score: Math.max(0, Math.min(1, candidate.aeroc / maxAeroc)),
+    legs: candidate.legs,
+    strikes: candidate.strikes,
+    maxProfit: Math.round(candidate.maxProfit * 100) / 100,
+    maxLoss: Math.round(candidate.maxLoss * 100) / 100,
+    breakeven: candidate.breakeven,
+    probabilityOfProfit: Math.round(candidate.probabilityOfProfit * 10000) / 10000,
+    expectedValue: Math.round(candidate.expectedValue * 100) / 100,
+    riskRewardRatio: Math.round(candidate.riskRewardRatio * 100) / 100,
+    liquidityScore: candidate.liquidityScore,
+    netDebit: Math.round(candidate.debitPaid * 100) / 100,
+    debitPaid: Math.round(candidate.debitPaid * 100) / 100,
+    eroc: Math.round(candidate.eroc * 10000) / 10000,
+    aeroc: Math.round(candidate.aeroc * 10000) / 10000,
+    expiration,
+  }));
+
+  return {
+    symbol: symbol.toUpperCase(),
+    rankingMode: 'aeroc',
+    underlyingPrice,
+    expiration,
+    rankedStrategies,
+  };
 }
 
 // Export helpers for testing

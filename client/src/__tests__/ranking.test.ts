@@ -6,11 +6,13 @@ import type { RankedStrategy, RankingResponse } from '@optionsranker/shared';
 
 const mockRankingResponse: RankingResponse = {
   symbol: 'NVDA',
+  rankingMode: 'current',
   underlyingPrice: 177.39,
   expiration: '2026-04-10',
   rankedStrategies: [
     {
       rank: 1,
+      rankingMode: 'current',
       strategyType: 'strangle',
       strategyName: 'Long Strangle',
       score: 0.7273,
@@ -18,6 +20,7 @@ const mockRankingResponse: RankingResponse = {
         { type: 'call', direction: 'buy', quantity: 1, strike: 180, premium: 0.68, expiration: '2026-04-10' },
         { type: 'put', direction: 'buy', quantity: 1, strike: 175, premium: 0.68, expiration: '2026-04-10' },
       ],
+      strikes: [175, 180],
       maxProfit: 'unlimited',
       maxLoss: -136,
       breakeven: [173.64, 181.36],
@@ -26,10 +29,14 @@ const mockRankingResponse: RankingResponse = {
       riskRewardRatio: 8.98,
       liquidityScore: 38891,
       netDebit: 135.50,
+      debitPaid: 135.50,
+      eroc: null,
+      aeroc: null,
       expiration: '2026-04-10',
     },
     {
       rank: 2,
+      rankingMode: 'current',
       strategyType: 'straddle',
       strategyName: 'Long Straddle',
       score: 0.7151,
@@ -37,6 +44,7 @@ const mockRankingResponse: RankingResponse = {
         { type: 'call', direction: 'buy', quantity: 1, strike: 177.5, premium: 1.63, expiration: '2026-04-10' },
         { type: 'put', direction: 'buy', quantity: 1, strike: 177.5, premium: 1.63, expiration: '2026-04-10' },
       ],
+      strikes: [177.5, 177.5],
       maxProfit: 'unlimited',
       maxLoss: -326,
       breakeven: [174.24, 180.76],
@@ -45,10 +53,14 @@ const mockRankingResponse: RankingResponse = {
       riskRewardRatio: 6.71,
       liquidityScore: 14064,
       netDebit: 325.50,
+      debitPaid: 325.50,
+      eroc: null,
+      aeroc: null,
       expiration: '2026-04-10',
     },
     {
       rank: 3,
+      rankingMode: 'current',
       strategyType: 'iron_condor',
       strategyName: 'Iron Condor',
       score: 0.2978,
@@ -58,6 +70,7 @@ const mockRankingResponse: RankingResponse = {
         { type: 'call', direction: 'sell', quantity: 1, strike: 182.5, premium: 0.35, expiration: '2026-04-10' },
         { type: 'call', direction: 'buy', quantity: 1, strike: 185, premium: 0.12, expiration: '2026-04-10' },
       ],
+      strikes: [170, 172.5, 182.5, 185],
       maxProfit: 33,
       maxLoss: -217,
       breakeven: [172.17, 183.33],
@@ -66,6 +79,9 @@ const mockRankingResponse: RankingResponse = {
       riskRewardRatio: 0.15,
       liquidityScore: 18338,
       netDebit: -33,
+      debitPaid: 33,
+      eroc: null,
+      aeroc: null,
       expiration: '2026-04-10',
     },
   ],
@@ -85,7 +101,7 @@ const mockedGetRankings = vi.mocked(rankingsApi.getRankings);
 describe('Ranking Store', () => {
   beforeEach(() => {
     useRankingStore.setState({
-      symbol: null, underlyingPrice: 0, expiration: '',
+      symbol: null, rankingMode: 'current', underlyingPrice: 0, expiration: '',
       rankedStrategies: [], isLoading: false, error: null,
     });
     vi.clearAllMocks();
@@ -116,6 +132,7 @@ describe('Ranking Store', () => {
     expect(state.rankedStrategies).toHaveLength(3);
     expect(state.underlyingPrice).toBe(177.39);
     expect(state.expiration).toBe('2026-04-10');
+    expect(state.rankingMode).toBe('current');
     expect(state.error).toBeNull();
   });
 
@@ -136,7 +153,7 @@ describe('Ranking Store', () => {
     await useRankingStore.getState().fetchRankings('nvda');
 
     expect(useRankingStore.getState().symbol).toBe('NVDA');
-    expect(mockedGetRankings).toHaveBeenCalledWith('nvda');
+    expect(mockedGetRankings).toHaveBeenCalledWith('nvda', 'current');
   });
 
   it('clear resets all state', async () => {

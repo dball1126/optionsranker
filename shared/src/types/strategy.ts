@@ -11,6 +11,14 @@ export type StrategyType =
   | 'strangle'
   | 'custom';
 
+export type RankingMode = 'current' | 'aeroc';
+
+export interface ScannerSectorDefinition {
+  id: string;
+  label: string;
+  symbols: string[];
+}
+
 export interface StrategyLeg {
   type: 'call' | 'put' | 'stock';
   direction: 'buy' | 'sell';
@@ -41,10 +49,12 @@ export interface StrategyAnalysisRequest {
 
 export interface RankedStrategy {
   rank: number;
+  rankingMode?: RankingMode;
   strategyType: StrategyType;
   strategyName: string;
   score: number;
   legs: StrategyLeg[];
+  strikes?: number[];
   maxProfit: number | 'unlimited';
   maxLoss: number | 'unlimited';
   breakeven: number[];
@@ -53,14 +63,42 @@ export interface RankedStrategy {
   riskRewardRatio: number;
   liquidityScore: number;
   netDebit: number;
+  debitPaid?: number;
+  eroc?: number | null;
+  aeroc?: number | null;
   expiration: string;
 }
 
 export interface RankingResponse {
   symbol: string;
+  rankingMode: RankingMode;
   underlyingPrice: number;
   expiration: string;
   rankedStrategies: RankedStrategy[];
+}
+
+export interface ScannerResult {
+  rank: number;
+  sectorRank: number;
+  symbol: string;
+  companyName: string;
+  sector: string;
+  sectorLabel: string;
+  underlyingPrice: number;
+  priceChange: number;
+  priceChangePercent: number;
+  scannerScore: number;
+  baseScore: number;
+  strategy: RankedStrategy;
+}
+
+export interface ScannerResponse {
+  rankingMode: Extract<RankingMode, 'current'>;
+  asOf: string;
+  cached: boolean;
+  universeSize: number;
+  sectors: ScannerSectorDefinition[];
+  results: ScannerResult[];
 }
 
 export interface StrategyAnalysisResponse {
