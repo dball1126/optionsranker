@@ -91,6 +91,27 @@ CREATE INDEX IF NOT EXISTS idx_pt_status ON paper_trades(status);
 CREATE INDEX IF NOT EXISTS idx_pt_expiry ON paper_trades(expiry_date);
 CREATE INDEX IF NOT EXISTS idx_pt_agent ON paper_trades(agent_id);
 
+-- Position alert rules created by the Lite app and evaluated by the backtester
+CREATE TABLE IF NOT EXISTS position_alerts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL,
+  symbol TEXT NOT NULL,
+  strategy_name TEXT,
+  trigger_type TEXT NOT NULL,
+  threshold REAL NOT NULL,
+  legs TEXT,
+  status TEXT DEFAULT 'pending',
+  notified TEXT,
+  triggered_at TEXT,
+  last_checked TEXT,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_alerts_user ON position_alerts(user_id);
+CREATE INDEX IF NOT EXISTS idx_alerts_status ON position_alerts(status);
+CREATE INDEX IF NOT EXISTS idx_alerts_symbol ON position_alerts(symbol);
+
 -- Daily market pulse signal snapshots (one row per day, upserted)
 CREATE TABLE IF NOT EXISTS signal_snapshots (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -112,7 +133,14 @@ CREATE TABLE IF NOT EXISTS notification_log (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id TEXT NOT NULL,
   notification_type TEXT NOT NULL,
+  channel TEXT,
+  recipient TEXT,
+  subject TEXT,
+  body TEXT,
+  alert_id INTEGER,
   sent_at TEXT DEFAULT (datetime('now')),
-  status TEXT DEFAULT 'sent'
+  status TEXT DEFAULT 'sent',
+  error TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_notif_user ON notification_log(user_id);
+CREATE INDEX IF NOT EXISTS idx_notif_alert ON notification_log(alert_id);
